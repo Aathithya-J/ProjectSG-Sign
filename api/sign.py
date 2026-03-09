@@ -1,6 +1,5 @@
-
-import os, json, uuid, hashlib, time, base64
-import urllib.request, urllib.error, urllib.parse
+import os, json, uuid, hashlib, time, base64, ssl
+import http.client, urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 STAGING_API   = "https://stg-api.sign.singpass.gov.sg"
@@ -93,11 +92,26 @@ class Handler(BaseHTTPRequestHandler):
             token    = _auth_token(client_id,pem,kid,url)
             boundary = uuid.uuid4().hex
             sp_body  = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{json.dumps(payload)}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{doc_name}\"\r\nContent-Type: application/pdf\r\n\r\n").encode()+pdf+f"\r\n--{boundary}--\r\n".encode()
-            req = urllib.request.Request(url,data=sp_body,method="POST",headers={"Authorization":f"Bearer {token}","Content-Type":f"multipart/form-data; boundary={boundary}","Content-Length":str(len(sp_body))})
-            with urllib.request.urlopen(req,timeout=30) as r:
-                data = json.loads(r.read())
-        except urllib.error.HTTPError as e:
-            _respond(self,502,{"error":f"Singpass API {e.code}","detail":e.read().decode(errors="replace")})
+
+            parsed   = urllib.parse.urlparse(url)
+            ctx      = ssl.create_default_context()
+            conn     = http.client.HTTPSConnection(parsed.netloc, timeout=30, context=ctx)
+            try:
+                conn.request("POST", parsed.path, body=sp_body, headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type":  f"multipart/form-data; boundary={boundary}",
+                    "Content-Length": str(len(sp_body)),
+                })
+                resp = conn.getresponse()
+                raw  = resp.read()
+                if resp.status >= 400:
+                    _respond(self, 502, {"error": f"Singpass API {resp.status}", "detail": raw.decode(errors="replace")})
+                    return
+                data = json.loads(raw)
+            finally:
+                conn.close()
+        except http.client.HTTPException as e:
+            _respond(self,502,{"error":f"HTTP error: {str(e)}"})
             return
         except Exception as e:
             _respond(self,500,{"error":str(e)})
