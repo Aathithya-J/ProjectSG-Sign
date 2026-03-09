@@ -78,9 +78,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const clientId    = process.env.SINGPASS_CLIENT_ID || "";
-    const rawPem = process.env.SINGPASS_PRIVATE_KEY_PEM || "";
-    // Vercel stores real newlines — only replace literal \n if no real newlines present
-    const pem = (rawPem.includes("\\n") ? rawPem.replace(/\\n/g, "\n") : rawPem).trim();
+    const pem = process.env.SINGPASS_PRIVATE_KEY_PEM || "";
     const kid         = process.env.SINGPASS_KID || "";
     const webhookBase = process.env.WEBHOOK_BASE_URL || "";
 
