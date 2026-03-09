@@ -509,9 +509,18 @@
       formData.append('staging', IS_STAGING ? '1' : '0');
 
       const res  = await fetch(`${API_BASE}/sign`, { method: 'POST', body: formData });
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Failed to create signing session');
+      // Safely parse JSON — Vercel / proxies can return plain-text error pages
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(`Server error (${res.status}): ${text.slice(0, 120)}`);
+      }
+
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
 
       // Populate signing state
       document.getElementById('info-docname').textContent = selectedFile.name;
@@ -547,6 +556,7 @@
     if (!currentReqId) return;
     try {
       const res  = await fetch(`${API_BASE}/status?id=${encodeURIComponent(currentReqId)}&staging=${IS_STAGING ? '1' : '0'}`);
+      if (!res.headers.get('content-type')?.includes('application/json')) return; // silently skip non-JSON
       const data = await res.json();
 
       if (data.status === 'signed' && data.signed_doc_url) {
