@@ -1,6 +1,10 @@
 const crypto = require('crypto');
 const https = require('https');
 
+// Correct endpoints based on diagnostic
+const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
+const PROD_URL = "https://sign.singpass.gov.sg/api/v3/sign-requests";
+
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   
@@ -9,10 +13,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    // Log request details
     console.log("Request received:", {
       method: req.method,
-      headers: req.headers,
       timestamp: new Date().toISOString()
     });
 
@@ -52,11 +54,14 @@ module.exports = async function handler(req, res) {
     console.log("Body size:", rawBody.length);
 
     // Simple multipart parser
-    const boundary = req.headers['content-type']?.split('boundary=')[1];
-    if (!boundary) {
+    const contentType = req.headers['content-type'] || '';
+    const boundaryMatch = contentType.match(/boundary=(.+)/);
+    
+    if (!boundaryMatch) {
       return res.status(400).json({ error: "No boundary in content-type" });
     }
 
+    const boundary = boundaryMatch[1];
     const boundaryBuffer = Buffer.from(`--${boundary}`);
     const parts = [];
     let start = 0;
@@ -122,11 +127,16 @@ module.exports = async function handler(req, res) {
         y: 0.05
       }],
       iat: now,
-      exp: now + 300,
+      exp: now + 300, // 5 minutes
       jti: crypto.randomUUID(),
-      webhook_url: webhookBase ? `${webhookBase}/api/webhook/singpass` : undefined
     };
 
+    // Add webhook URL if available
+    if (webhookBase) {
+      payload.webhook_url = `${webhookBase}/api/webhook/singpass`;
+    }
+
+    // Add signer NRIC hash if provided
     if (fields.signer_nric) {
       payload.signer_uin_hash = crypto
         .createHash('sha256')
@@ -134,17 +144,18 @@ module.exports = async function handler(req, res) {
         .digest('hex');
     }
 
-    console.log("JWT payload:", payload);
+    console.log("JWT payload:", JSON.stringify(payload, null, 2));
 
     // Create JWT
-    const header = Buffer.from(JSON.stringify({ 
-      alg: 'ES256', 
-      typ: 'JWT', 
-      kid: kid 
-    })).toString('base64url');
+    const header = {
+      alg: 'ES256',
+      typ: 'JWT',
+      kid: kid
+    };
     
-    const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const message = `${header}.${body}`;
+    const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url');
+    const bodyB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const message = `${headerB64}.${bodyB64}`;
     
     const key = crypto.createPrivateKey({
       key: pem,
@@ -160,21 +171,21 @@ module.exports = async function handler(req, res) {
     const token = `${message}.${signature.toString('base64url')}`;
     console.log("JWT created successfully");
 
-    // Try to connect to Singpass
-    const apiUrl = fields.staging === '0' 
-      ? 'https://api.sign.singpass.gov.sg/v3/signing-sessions'
-      : 'https://stg.api.sign.singpass.gov.sg/v3/signing-sessions';
+    // Use the correct endpoint based on staging flag
+    const isStaging = fields.staging !== '0'; // Default to staging
+    const apiUrl = isStaging ? STAGING_URL : PROD_URL;
 
     console.log("Attempting to connect to:", apiUrl);
+    console.log("Using staging:", isStaging);
 
-    // Use native https module for more control
+    // Use native https module
     const result = await new Promise((resolve, reject) => {
       const url = new URL(apiUrl);
       
       const options = {
         hostname: url.hostname,
         port: 443,
-        path: url.pathname,
+        path: url.pathname + url.search,
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -182,13 +193,14 @@ module.exports = async function handler(req, res) {
           'Content-Length': pdfFile.length,
           'User-Agent': 'Singpass-App/1.0'
         },
-        timeout: 10000
+        timeout: 15000 // 15 second timeout
       };
 
       console.log("HTTPS request options:", {
         hostname: options.hostname,
         path: options.path,
-        method: options.method
+        method: options.method,
+        headers: Object.keys(options.headers)
       });
 
       const req = https.request(options, (response) => {
@@ -198,7 +210,7 @@ module.exports = async function handler(req, res) {
           const body = Buffer.concat(chunks).toString();
           console.log("Response status:", response.statusCode);
           console.log("Response headers:", response.headers);
-          console.log("Response body length:", body.length);
+          console.log("Response body:", body.substring(0, 500));
           
           resolve({
             status: response.statusCode,
@@ -219,16 +231,28 @@ module.exports = async function handler(req, res) {
 
       req.on('timeout', () => {
         req.destroy();
-        reject(new Error('Request timeout'));
+        reject(new Error('Request timeout after 15 seconds'));
       });
 
       req.write(pdfFile);
       req.end();
     });
 
+    // Handle response
     if (result.status >= 200 && result.status < 300) {
       try {
         const data = JSON.parse(result.body);
+        
+        // Check if we got the expected response
+        if (!data.request_id || !data.signing_url) {
+          return res.status(502).json({
+            error: "Incomplete response from Singpass",
+            expected: ["request_id", "signing_url", "exchange_code"],
+            received: Object.keys(data),
+            data: data
+          });
+        }
+
         return res.status(200).json({
           sign_request_id: data.request_id,
           signing_url: data.signing_url,
@@ -241,9 +265,20 @@ module.exports = async function handler(req, res) {
         });
       }
     } else {
+      // Handle error response
+      let errorDetail = result.body;
+      try {
+        const errorData = JSON.parse(result.body);
+        errorDetail = errorData;
+      } catch (e) {
+        // Keep as string if not JSON
+      }
+
       return res.status(502).json({
         error: `Singpass API returned ${result.status}`,
-        body: result.body.substring(0, 200)
+        status: result.status,
+        detail: errorDetail,
+        url: apiUrl
       });
     }
 
@@ -258,7 +293,7 @@ module.exports = async function handler(req, res) {
       error: "Failed to connect to Singpass API",
       message: error.message,
       code: error.code,
-      suggestion: "Run /api/diagnose to check connectivity"
+      suggestion: "Check that you're using the correct API endpoints"
     });
   }
 };
