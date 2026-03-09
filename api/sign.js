@@ -78,7 +78,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const clientId    = process.env.SINGPASS_CLIENT_ID || "";
-    const pem = process.env.SINGPASS_PRIVATE_KEY_PEM || "";
+    const pem = (process.env.SINGPASS_PRIVATE_KEY_PEM || "")
+      .replace(/\\n/g, "\n")
+      .replace(/[^\x20-\x7E\n]/g, "")
+      .trim();
     const kid         = process.env.SINGPASS_KID || "";
     const webhookBase = process.env.WEBHOOK_BASE_URL || "";
 
