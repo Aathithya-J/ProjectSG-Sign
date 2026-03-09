@@ -1,9 +1,3 @@
 {
-  "version": 2,
-  "functions": {
-    "api/sign.js": { "runtime": "nodejs20.x" },
-    "api/status.py": { "runtime": "python3.12" },
-    "api/jwks.py": { "runtime": "python3.12" },
-    "api/webhook/singpass.py": { "runtime": "python3.12" }
-  }
+  "version": 2
 }
