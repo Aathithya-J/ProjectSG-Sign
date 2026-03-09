@@ -16,18 +16,18 @@ function makeJwt(payload, pem, kid) {
   return `${msg}.${b64url(sig)}`;
 }
 
-function authToken(clientId, pem, kid, docName, signLocations, signerUinHash) {
+function authToken(clientId, pem, kid, docName, signLocations, signerUinHash, audience) {
   const now = Math.floor(Date.now() / 1000);
-const payload = {
-  client_id:      clientId,
-  doc_name:       docName,
-  sign_locations: signLocations,
-  aud:            apiUrl,        // ← ADD THIS
-  iat:            now,
-  exp:            now + 110,
-  jti:            crypto.randomUUID(),
-};  
-if (signerUinHash) payload.signer_uin_hash = signerUinHash;
+  const payload = {
+    client_id:      clientId,
+    doc_name:       docName,
+    sign_locations: signLocations,
+    aud:            audience,
+    iat:            now,
+    exp:            now + 110,
+    jti:            crypto.randomUUID(),
+  };
+  if (signerUinHash) payload.signer_uin_hash = signerUinHash;
   return makeJwt(payload, pem, kid);
 }
 
@@ -102,7 +102,7 @@ module.exports = async function handler(req, res) {
       page: i + 1, x: 0.72, y: 0.05,
     }));
 
-    const token = authToken(clientId, pem, kid, docName, signLocations, signerHash);
+    const token = authToken(clientId, pem, kid, docName, signLocations, signerHash, apiUrl);
 
     const response = await fetch(apiUrl, {
       method: "POST",
