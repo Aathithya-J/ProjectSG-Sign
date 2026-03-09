@@ -81,13 +81,26 @@ export default async function handler(req, res) {
   if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
   const clientId    = process.env.SINGPASS_CLIENT_ID            || "";
-  const pem         = (process.env.SINGPASS_PRIVATE_KEY_PEM     || "").replace(/\\n/g, "\n");
+  const pem = (process.env.SINGPASS_PRIVATE_KEY_PEM || "")
+    .replace(/\\n/g, "\n")
+    .replace(/\n\n/g, "\n")
+    .trim();
   const kid         = process.env.SINGPASS_KID                  || "";
   const webhookBase = process.env.WEBHOOK_BASE_URL              || "";
 
   if (!clientId || !pem || !kid) {
     const missing = ["SINGPASS_CLIENT_ID","SINGPASS_PRIVATE_KEY_PEM","SINGPASS_KID"].filter(k => !process.env[k]);
     return res.status(500).json({ error: "Missing env vars", missing });
+  }
+
+  // Debug: verify PEM looks correct
+  const pemOk = pem.includes("-----BEGIN PRIVATE KEY-----") && pem.includes("-----END PRIVATE KEY-----");
+  if (!pemOk) {
+    return res.status(500).json({ 
+      error: "Invalid PEM format", 
+      preview: pem.slice(0, 80),
+      hint: "PEM must start with -----BEGIN PRIVATE KEY----- on its own line"
+    });
   }
 
   const rawBody = await readBody(req);
