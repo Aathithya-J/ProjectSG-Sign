@@ -11,7 +11,7 @@ function makeJwt(payload, pem, kid) {
   const header = b64url(JSON.stringify({ alg: "ES256", typ: "JWT", kid }));
   const body   = b64url(JSON.stringify(payload));
   const msg    = `${header}.${body}`;
-  const keyObj = crypto.createPrivateKey({ key: pem, format: "pem" });
+  const keyObj = crypto.createPrivateKey(pem);
   const sig    = crypto.sign("SHA256", Buffer.from(msg), { key: keyObj, dsaEncoding: "ieee-p1363" });
   return `${msg}.${b64url(sig)}`;
 }
