@@ -18,15 +18,16 @@ function makeJwt(payload, pem, kid) {
 
 function authToken(clientId, pem, kid, docName, signLocations, signerUinHash) {
   const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    client_id:      clientId,
-    doc_name:       docName,
-    sign_locations: signLocations,
-    iat:            now,
-    exp:            now + 110,
-    jti:            crypto.randomUUID(),
-  };
-  if (signerUinHash) payload.signer_uin_hash = signerUinHash;
+const payload = {
+  client_id:      clientId,
+  doc_name:       docName,
+  sign_locations: signLocations,
+  aud:            apiUrl,        // ← ADD THIS
+  iat:            now,
+  exp:            now + 110,
+  jti:            crypto.randomUUID(),
+};  
+if (signerUinHash) payload.signer_uin_hash = signerUinHash;
   return makeJwt(payload, pem, kid);
 }
 

@@ -14,13 +14,11 @@ _store: dict = {}
 def get_api_base(is_staging: bool) -> str:
     return STAGING_API if is_staging else PROD_API
 
-
 def make_jwt(payload: dict, private_key_pem: str, kid: str) -> str:
     import jwt as pyjwt
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
     private_key = load_pem_private_key(private_key_pem.encode(), password=None)
-    return pyjwt.encode(payload, private_key, algorithm="RS256", headers={"kid": kid})
-
+    return pyjwt.encode(payload, private_key, algorithm="ES256", headers={"kid": kid})  # ← RS256 → ES256
 
 def build_auth_token(client_id: str, private_key_pem: str, kid: str, audience: str) -> str:
     now = int(time.time())
