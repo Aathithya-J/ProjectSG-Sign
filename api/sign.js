@@ -89,17 +89,6 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: "Missing env vars", missing });
     }
 
-    // TEMPORARY DEBUG - remove after fixing
-    return res.status(200).json({
-      pemLines:     pem.split("\n").length,
-      pemStart:     pem.slice(0, 50),
-      pemEnd:       pem.slice(-50),
-      pemHasHeader: pem.includes("-----BEGIN PRIVATE KEY-----"),
-      pemHasFooter: pem.includes("-----END PRIVATE KEY-----"),
-      pemLength:    pem.length,
-      hasLiteralBackslashN: pem.includes("\\n"),
-    });
-
     const rawBody = await readBody(req);
     const { fields, file, filename } = parseMultipart(rawBody, req.headers["content-type"] || "");
     if (!file) return res.status(400).json({ error: "No PDF provided" });
