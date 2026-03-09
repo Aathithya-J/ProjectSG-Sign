@@ -21,41 +21,40 @@ function createJWT(payload, pem, kid) {
   const message = `${headerB64}.${bodyB64}`;
   
   // Try different key formats
-  let key;
-  const errors = [];
+ // Replace the key loading section (from line ~40-75) with this:
+let key;
+const errors = [];
+
+try {
+  // Try to load as-is first
+  key = crypto.createPrivateKey({
+    key: cleanPem,
+    format: 'pem'
+  });
+  console.log("Successfully loaded private key");
+} catch (err) {
+  console.error("Failed to load private key:", err.message);
   
-  // Try PKCS#8 format (-----BEGIN PRIVATE KEY-----)
-  try {
-    key = crypto.createPrivateKey({
-      key: cleanPem,
-      format: 'pem',
-      type: 'pkcs8'
-    });
-    console.log("Successfully loaded as PKCS#8");
-  } catch (err) {
-    errors.push(`PKCS#8: ${err.message}`);
-    
-    // Try SEC1 format (-----BEGIN EC PRIVATE KEY-----)
+  // If it's an unsupported format error, try to convert it
+  if (err.message.includes('UNSUPPORTED')) {
     try {
-      key = crypto.createPrivateKey({
-        key: cleanPem,
-        format: 'pem',
-        type: 'sec1'
-      });
-      console.log("Successfully loaded as SEC1");
-    } catch (err2) {
-      errors.push(`SEC1: ${err2.message}`);
-      
-      // Try without specifying type
-      try {
-        key = crypto.createPrivateKey(cleanPem);
-        console.log("Successfully loaded with auto-detection");
-      } catch (err3) {
-        errors.push(`Auto: ${err3.message}`);
-        throw new Error(`Failed to load private key. Errors: ${errors.join(' | ')}`);
-      }
+      // For ES256 keys, we need to ensure it's in PKCS#8 format
+      // Since we can't convert in code easily, we'll throw a clear error
+      throw new Error(
+        'Private key format not supported. Please use the converted PKCS#8 format:\n' +
+        '-----BEGIN PRIVATE KEY-----\n' +
+        'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg4ICYKDqxAySgsUxR\n' +
+        'nNA59LWMoppfM5wFXef1hc59yGOhRANCAATSb2hIeqgEZBpVmEeSa3+DN2QIREi9\n' +
+        'RXdXpXWvLmpErYNZ3yhBRlyCcA1PgK0LBHX10Ga7mytObYM3ZPq9Hr5Z\n' +
+        '-----END PRIVATE KEY-----'
+      );
+    } catch (conversionError) {
+      throw conversionError;
     }
+  } else {
+    throw err;
   }
+}
   
   // Sign the message
   const signature = crypto.sign('sha256', Buffer.from(message), {
