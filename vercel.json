@@ -1,3 +1,9 @@
 {
-  "version": 2
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/sign", "destination": "/api/sign.js" },
+    { "source": "/api/status", "destination": "/api/status.js" },
+    { "source": "/api/jwks", "destination": "/api/jwks.js" },
+    { "source": "/api/webhook/singpass", "destination": "/api/webhook/singpass.js" }
+  ]
 }
