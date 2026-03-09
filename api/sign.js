@@ -8,10 +8,12 @@ function b64url(buf) {
 }
 
 function makeJwt(payload, pem, kid) {
-  const header  = b64url(JSON.stringify({ alg: "ES256", typ: "JWT", kid }));
-  const body    = b64url(JSON.stringify(payload));
-  const msg     = `${header}.${body}`;
-  const sig     = crypto.createSign("SHA256").update(msg).sign({ key: pem, dsaEncoding: "ieee-p1363" });
+  const header = b64url(JSON.stringify({ alg: "ES256", typ: "JWT", kid }));
+  const body   = b64url(JSON.stringify(payload));
+  const msg    = `${header}.${body}`;
+  const sig    = crypto.createSign("SHA256")
+    .update(msg)
+    .sign({ key: pem, format: "pem", type: "pkcs8", dsaEncoding: "ieee-p1363" });
   return `${msg}.${b64url(sig)}`;
 }
 
@@ -128,6 +130,10 @@ export default async function handler(req, res) {
     });
 
   } catch (e) {
-    return res.status(500).json({ error: e.message, cause: String(e.cause || "") });
+    return res.status(500).json({ 
+      error: e.message, 
+      cause: String(e.cause || ""),
+      stack: e.stack?.split("\n").slice(0,3).join(" | ")
+    });
   }
 }
