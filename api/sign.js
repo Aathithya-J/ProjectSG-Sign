@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 
-const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
-const PROD_URL = "https://sign.singpass.gov.sg/api/v3/sign-requests";
+const STAGING_URL = "https://staging.sign.singpass.gov.sg/v3/sign-requests";
 
 function createJWT(payload, pem, kid) {
   // Clean up the PEM - remove any escaped newlines
