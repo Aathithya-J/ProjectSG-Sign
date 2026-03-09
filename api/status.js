@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
     }
 
     const clientId = process.env.SINGPASS_CLIENT_ID || "";
-    const pem    = process.env.SINGPASS_PRIVATE_KEY_PEM || "";
+    const pem    = (process.env.SINGPASS_PRIVATE_KEY_PEM || "").replace(/\\n/g, "\n");
     const kid      = process.env.SINGPASS_KID || "";
     const apiBase  = isStaging ? STAGING_URL : PROD_URL;
 
