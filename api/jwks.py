@@ -16,12 +16,11 @@ JWKS_DATA = {
             "alg": "ES256",
             "kid": "key-1",
             "crv": "P-256",
-            "x": "2Slc4REnxGbmGM3R7Q7JV7otLh9gjiC9mcT4k6Gmi9E",
-            "y": "zy6xY4jABB8jeOyM4Q1nY68K2NX67kUmJ_W3dLbV6VE"
+            "x": "0m9oSHqoBGQaVZhHkmt_gzdkCERIvUV3V6V1vC5qRK0",
+            "y": "g1nfKEFGXIJwDU-ArQsEdfXQZrubK05tgzdk-r0evlk"
         }
     ]
 }
-
 
 class Handler(BaseHTTPRequestHandler):
 
