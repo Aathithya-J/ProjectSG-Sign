@@ -1,98 +1,105 @@
-"""
-api/sign.py — POST /api/sign
-Receives a PDF, creates a Singpass Sign V3 session, returns signing_url.
-"""
-import json, uuid, hashlib, urllib.request, urllib.error
-from http.server import BaseHTTPRequestHandler
-from api._shared import (
-    get_api_base, build_auth_token, json_response,
-    parse_multipart, get_env, SIGN_ENDPOINT, _store
-)
 
+import os, json, uuid, hashlib, time, base64
+import urllib.request, urllib.error, urllib.parse
+from http.server import BaseHTTPRequestHandler
+
+STAGING_API   = "https://stg-api.sign.singpass.gov.sg"
+PROD_API      = "https://api.sign.singpass.gov.sg"
+SIGN_ENDPOINT = "/v3/signing-sessions"
+
+def _b64url(data):
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+def _make_jwt(payload, pem, kid):
+    from cryptography.hazmat.primitives.serialization import load_pem_private_key
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import padding
+    header  = _b64url(json.dumps({"alg":"RS256","typ":"JWT","kid":kid}).encode())
+    body    = _b64url(json.dumps(payload).encode())
+    message = f"{header}.{body}".encode()
+    key     = load_pem_private_key(pem.encode(), password=None)
+    sig     = key.sign(message, padding.PKCS1v15(), hashes.SHA256())
+    return f"{header}.{body}.{_b64url(sig)}"
+
+def _auth_token(client_id, pem, kid, audience):
+    now = int(time.time())
+    return _make_jwt({"sub":client_id,"iss":client_id,"aud":audience,"iat":now,"exp":now+300,"jti":str(uuid.uuid4())}, pem, kid)
+
+def _respond(handler, status, data):
+    body = json.dumps(data).encode()
+    handler.send_response(status)
+    handler.send_header("Content-Type","application/json")
+    handler.send_header("Content-Length",str(len(body)))
+    handler.send_header("Access-Control-Allow-Origin","*")
+    handler.send_header("Access-Control-Allow-Methods","POST, OPTIONS")
+    handler.send_header("Access-Control-Allow-Headers","Content-Type")
+    handler.end_headers()
+    handler.wfile.write(body)
+
+def _parse_multipart(body, content_type):
+    boundary = None
+    for p in content_type.split(";"):
+        p = p.strip()
+        if p.startswith("boundary="): boundary = p[9:].strip()
+    if not boundary: return {}, None
+    fields, pdf = {}, None
+    for seg in body.split(("--"+boundary).encode())[1:]:
+        if seg in (b"--\r\n",b"--"): continue
+        if b"\r\n\r\n" not in seg: continue
+        hdr, content = seg.split(b"\r\n\r\n",1)
+        content = content.rstrip(b"\r\n--")
+        name = filename = None
+        for line in hdr.decode(errors="replace").splitlines():
+            if "Content-Disposition" in line:
+                for tok in line.split(";"):
+                    tok = tok.strip()
+                    if tok.startswith('name="'): name = tok[6:-1]
+                    if tok.startswith('filename="'): filename = tok[10:-1]
+        if name=="file" and filename: pdf = content
+        elif name: fields[name] = content.decode(errors="replace")
+    return fields, pdf
 
 class Handler(BaseHTTPRequestHandler):
-
-    def log_message(self, format, *args): pass
-
+    def log_message(self, *a): pass
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Access-Control-Allow-Methods","POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers","Content-Type")
         self.end_headers()
-
     def do_POST(self):
-        client_id, private_key_pem, kid, webhook_base = get_env()
-        if not all([client_id, private_key_pem, kid]):
-            json_response(self, 500, {"error": "Missing env vars: SINGPASS_CLIENT_ID, SINGPASS_PRIVATE_KEY_PEM, SINGPASS_KID"})
+        client_id    = os.environ.get("SINGPASS_CLIENT_ID","")
+        pem          = os.environ.get("SINGPASS_PRIVATE_KEY_PEM","").replace("\\n","\n")
+        kid          = os.environ.get("SINGPASS_KID","")
+        webhook_base = os.environ.get("WEBHOOK_BASE_URL","")
+        if not all([client_id,pem,kid]):
+            _respond(self,500,{"error":"Missing env vars","missing":[k for k,v in {"SINGPASS_CLIENT_ID":client_id,"SINGPASS_PRIVATE_KEY_PEM":pem,"SINGPASS_KID":kid}.items() if not v]})
             return
-
-        content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length)
-        fields, pdf_bytes = parse_multipart(body, self.headers.get("Content-Type", ""))
-
-        if not pdf_bytes:
-            json_response(self, 400, {"error": "No PDF file provided"})
+        length = int(self.headers.get("Content-Length",0))
+        body   = self.rfile.read(length)
+        fields, pdf = _parse_multipart(body, self.headers.get("Content-Type",""))
+        if not pdf:
+            _respond(self,400,{"error":"No PDF provided"})
             return
-
-        is_staging  = fields.get("staging", "1") == "1"
-        doc_name    = fields.get("doc_name", "document.pdf")
-        signer_nric = fields.get("signer_nric", "").strip().upper()
-        api_base    = get_api_base(is_staging)
-
-        payload = {
-            "doc_name": doc_name,
-            "sign_locations": [
-                {"page": i, "x": 0.72, "y": 0.05, "width": 0.25, "height": 0.06}
-                for i in range(1, 21)
-            ],
-        }
-        if signer_nric:
-            payload["signer_uin_hash"] = hashlib.sha256(signer_nric.encode()).hexdigest()
-        if webhook_base:
-            payload["webhook_url"] = webhook_base.rstrip("/") + "/api/webhook/singpass"
-
+        is_staging  = fields.get("staging","1")=="1"
+        doc_name    = fields.get("doc_name","document.pdf")
+        signer_nric = fields.get("signer_nric","").strip().upper()
+        api_base    = STAGING_API if is_staging else PROD_API
+        payload = {"doc_name":doc_name,"sign_locations":[{"page":i,"x":0.72,"y":0.05,"width":0.25,"height":0.06} for i in range(1,21)]}
+        if signer_nric: payload["signer_uin_hash"] = hashlib.sha256(signer_nric.encode()).hexdigest()
+        if webhook_base: payload["webhook_url"] = webhook_base.rstrip("/")+"/api/webhook/singpass"
         try:
-            url        = api_base + SIGN_ENDPOINT
-            auth_token = build_auth_token(client_id, private_key_pem, kid, url)
-            boundary   = uuid.uuid4().hex
-
-            sp_body = (
-                f"--{boundary}\r\n"
-                f'Content-Disposition: form-data; name="payload"\r\n'
-                f"Content-Type: application/json\r\n\r\n"
-                f"{json.dumps(payload)}\r\n"
-                f"--{boundary}\r\n"
-                f'Content-Disposition: form-data; name="file"; filename="{doc_name}"\r\n'
-                f"Content-Type: application/pdf\r\n\r\n"
-            ).encode() + pdf_bytes + f"\r\n--{boundary}--\r\n".encode()
-
-            req = urllib.request.Request(
-                url, data=sp_body, method="POST",
-                headers={
-                    "Authorization":  f"Bearer {auth_token}",
-                    "Content-Type":   f"multipart/form-data; boundary={boundary}",
-                    "Content-Length": str(len(sp_body)),
-                }
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                resp_data = json.loads(resp.read())
-
+            url      = api_base+SIGN_ENDPOINT
+            token    = _auth_token(client_id,pem,kid,url)
+            boundary = uuid.uuid4().hex
+            sp_body  = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"payload\"\r\nContent-Type: application/json\r\n\r\n{json.dumps(payload)}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{doc_name}\"\r\nContent-Type: application/pdf\r\n\r\n").encode()+pdf+f"\r\n--{boundary}--\r\n".encode()
+            req = urllib.request.Request(url,data=sp_body,method="POST",headers={"Authorization":f"Bearer {token}","Content-Type":f"multipart/form-data; boundary={boundary}","Content-Length":str(len(sp_body))})
+            with urllib.request.urlopen(req,timeout=30) as r:
+                data = json.loads(r.read())
         except urllib.error.HTTPError as e:
-            json_response(self, 502, {"error": f"Singpass API {e.code}", "detail": e.read().decode(errors="replace")})
+            _respond(self,502,{"error":f"Singpass API {e.code}","detail":e.read().decode(errors="replace")})
             return
         except Exception as e:
-            json_response(self, 500, {"error": str(e)})
+            _respond(self,500,{"error":str(e)})
             return
-
-        sign_request_id = resp_data.get("sign_request_id", "")
-        _store[sign_request_id] = {
-            "exchange_code":  resp_data.get("exchange_code", ""),
-            "status":         "pending",
-            "signed_doc_url": None,
-        }
-
-        json_response(self, 200, {
-            "sign_request_id": sign_request_id,
-            "signing_url":     resp_data.get("signing_url", ""),
-        })
+        _respond(self,200,{"sign_request_id":data.get("sign_request_id",""),"signing_url":data.get("signing_url","")})
