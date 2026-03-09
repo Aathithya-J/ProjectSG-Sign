@@ -11,12 +11,13 @@ from http.server import BaseHTTPRequestHandler
 JWKS_DATA = {
     "keys": [
         {
-            "kty": "RSA",
+            "kty": "EC",
             "use": "sig",
-            "alg": "RS256",
+            "alg": "ES256",
             "kid": "key-1",
-            "n": "qV7gM-2TT2gRRix0qlhzMysgcOuM9kmx8k_k3HgJvx0-XbTr0V99LoF3f-Gcn9g_2b_KgpelqrEssCQYK1dnFsDGLWhpD7JwGmIRkYSfSOCzMm-BW83AuJU0vCkmNrr1RT5-rehba76kNPolZDJdjgYrnu0aKvzAt3uZnGHGm4L2c625Fv6BgDj32sb3Wsm06nDEjxKmDWa3DiJL1C-ZCcdvnSCITwMbMI5H5g9uYvVkRXavxtba6-l5r_SaMqVbkkYIFg0ql8QKbXK2TvAQUkIBM8fdKq2iFgmVd3H7W6FRuNRtv53ctebvpPzbhFu3ykLkKsGTGjcB89yZYHWO2w",
-            "e": "AQAB"
+            "crv": "P-256",
+            "x": "2Slc4REnxGbmGM3R7Q7JV7otLh9gjiC9mcT4k6Gmi9E",
+            "y": "zy6xY4jABB8jeOyM4Q1nY68K2NX67kUmJ_W3dLbV6VE"
         }
     ]
 }
