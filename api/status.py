@@ -2,7 +2,8 @@
 api/status.py — GET /api/status?id=<sign_request_id>
 Polls Singpass for signing result.
 """
-import json, urllib.request, urllib.error, urllib.parse
+import json, ssl, urllib.parse
+import http.client
 from http.server import BaseHTTPRequestHandler
 from api._shared import (
     get_api_base, build_auth_token, json_response,
@@ -42,12 +43,19 @@ class Handler(BaseHTTPRequestHandler):
             exchange_code = record["exchange_code"]
             body_data     = json.dumps({"exchange_code": exchange_code}).encode()
 
-            req = urllib.request.Request(
-                result_url, data=body_data, method="POST",
-                headers={"Authorization": f"Bearer {auth_token}", "Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            parsed = urllib.parse.urlparse(result_url)
+            ctx    = ssl.create_default_context()
+            conn   = http.client.HTTPSConnection(parsed.netloc, timeout=15, context=ctx)
+            try:
+                conn.request("POST", parsed.path, body=body_data, headers={
+                    "Authorization": f"Bearer {auth_token}",
+                    "Content-Type":  "application/json",
+                    "Content-Length": str(len(body_data)),
+                })
+                resp   = conn.getresponse()
                 result = json.loads(resp.read())
+            finally:
+                conn.close()
 
             signed_url = result.get("signed_doc_url") or result.get("download_url")
             if signed_url:
@@ -56,7 +64,7 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 json_response(self, 200, {"status": "pending"})
 
-        except urllib.error.HTTPError as e:
+        except (http.client.HTTPException, OSError):
             json_response(self, 200, {"status": "pending"})
         except Exception as e:
             json_response(self, 200, {"status": "pending", "debug": str(e)})
