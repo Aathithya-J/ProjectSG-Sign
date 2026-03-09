@@ -1,15 +1,19 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/sign.py",  "use": "@vercel/python" },
-    { "src": "api/jwks.py",  "use": "@vercel/python" },
-    { "src": "index.html",   "use": "@vercel/static" },
-    { "src": "signed.html",  "use": "@vercel/static" }
+    { "src": "api/sign.py",              "use": "@vercel/python" },
+    { "src": "api/status.py",            "use": "@vercel/python" },
+    { "src": "api/jwks.py",              "use": "@vercel/python" },
+    { "src": "api/webhook/singpass.py",  "use": "@vercel/python" },
+    { "src": "index.html",               "use": "@vercel/static" },
+    { "src": "signed.html",              "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/jwks",               "dest": "/api/jwks.py" },
-    { "src": "/api/(sign|status|webhook)(/.*)?", "dest": "/api/sign.py" },
-    { "src": "/signed",                 "dest": "/signed.html" },
-    { "src": "/(.*)",                   "dest": "/index.html" }
+    { "src": "/api/jwks",                "dest": "/api/jwks.py" },
+    { "src": "/api/sign",                "dest": "/api/sign.py" },
+    { "src": "/api/status",              "dest": "/api/status.py" },
+    { "src": "/api/webhook/singpass",    "dest": "/api/webhook/singpass.py" },
+    { "src": "/signed",                  "dest": "/signed.html" },
+    { "src": "/(.*)",                    "dest": "/index.html" }
   ]
 }
