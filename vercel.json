@@ -1,9 +1,25 @@
 {
   "version": 2,
-  "rewrites": [
-    { "source": "/api/sign", "destination": "/api/sign.js" },
-    { "source": "/api/status", "destination": "/api/status.js" },
-    { "source": "/api/jwks", "destination": "/api/jwks.js" },
-    { "source": "/api/webhook/singpass", "destination": "/api/webhook/singpass.js" }
+  "routes": [
+    {
+      "src": "/api/diagnose",
+      "dest": "/api/diagnose.js"
+    },
+    {
+      "src": "/api/sign",
+      "dest": "/api/sign-simple.js"
+    },
+    {
+      "src": "/api/status",
+      "dest": "/api/status.js"
+    },
+    {
+      "src": "/api/jwks",
+      "dest": "/api/jwks.js"
+    },
+    {
+      "src": "/api/webhook/singpass",
+      "dest": "/api/webhook/singpass.js"
+    }
   ]
 }
