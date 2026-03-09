@@ -27,7 +27,10 @@ function authToken(clientId, pem, kid, audience) {
   );
 }
 
-export const config = { api: { bodyParser: false } };
+export const config = {
+  api: { bodyParser: false },
+  runtime: "nodejs20.x",
+};
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
