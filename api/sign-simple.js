@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const https  = require('https');
 
-// Singpass Sign V3 endpoints (from official docs)
+// Singpass Sign V3 — verified from official docs
 // Staging:    https://staging.sign.singpass.gov.sg/api/v3
 // Production: https://app.sign.singpass.gov.sg/api/v3
 const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
@@ -21,13 +21,6 @@ module.exports = async function handler(req, res) {
     const kid         = process.env.SINGPASS_KID;
     const webhookBase = process.env.WEBHOOK_BASE_URL;
 
-    console.log("Env check:", {
-      clientId: clientId ? '✓' : '✗',
-      pem:      pem      ? '✓' : '✗',
-      kid:      kid      ? '✓' : '✗',
-      webhookBase: webhookBase || '✗',
-    });
-
     if (!clientId || !pem || !kid) {
       return res.status(500).json({
         error: "Missing required environment variables",
@@ -35,7 +28,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Read raw multipart body (from the browser form upload)
+    // Read raw multipart body from browser form
     const chunks = [];
     await new Promise((resolve, reject) => {
       req.on('data', chunk => chunks.push(chunk));
@@ -44,7 +37,7 @@ module.exports = async function handler(req, res) {
     });
     const rawBody = Buffer.concat(chunks);
 
-    // Parse multipart to extract PDF bytes and form fields
+    // Parse multipart to extract PDF and form fields
     const contentType   = req.headers['content-type'] || '';
     const boundaryMatch = contentType.match(/boundary=(.+)/);
     if (!boundaryMatch) {
@@ -84,7 +77,6 @@ module.exports = async function handler(req, res) {
         if (name === 'file' && filenameMatch) {
           pdfFile  = part.content;
           fileName = filenameMatch[1];
-          console.log("PDF received:", fileName, "size:", pdfFile.length, "bytes");
         } else {
           fields[name] = part.content.toString();
         }
@@ -99,20 +91,25 @@ module.exports = async function handler(req, res) {
     const apiUrl    = isStaging ? STAGING_URL : PROD_URL;
 
     // ── Build JWT ──────────────────────────────────────────────────────────────
-    // Per official Singpass Sign V3 docs, JWT payload contains:
-    //   client_id, doc_name, sign_locations (or x/y/page for single sig),
-    //   iat, exp, jti — and optionally signer_uin_hash, webhook_url
+    // Verified against the exact example JWT in Singpass docs:
     //
-    // IMPORTANT: exp must be within 2 minutes of iat.
-    // There is NO aud/sub/iss in this JWT (unlike other Singpass APIs).
+    // HEADER: { "alg": "ES256", "kid": "<kid>" }
+    //   - NO "typ" field
+    //
+    // PAYLOAD (single sig): { client_id, doc_name, x, y, page, iat, jti }
+    //   - x, y, page are TOP-LEVEL fields, NOT nested in sign_locations
+    //   - NO "exp" field
+    //   - optional: signer_uin_hash, webhook_url
+    //
     const now = Math.floor(Date.now() / 1000);
     const jwtPayload = {
-      client_id:      clientId,
-      doc_name:       fields.doc_name || fileName,
-      sign_locations: [{ page: 1, x: 0.72, y: 0.05 }],
-      iat: now,
-      exp: now + 110,   // 1m50s — safely within the 2-minute limit
-      jti: crypto.randomUUID(),
+      client_id: clientId,
+      doc_name:  fields.doc_name || fileName,
+      x:    0.72,
+      y:    0.05,
+      page: 1,
+      iat:  now,
+      jti:  crypto.randomUUID(),
     };
 
     if (webhookBase) {
@@ -126,16 +123,15 @@ module.exports = async function handler(req, res) {
         .digest('hex');
     }
 
-    console.log("JWT payload:", JSON.stringify(jwtPayload, null, 2));
+    console.log("JWT payload:", JSON.stringify(jwtPayload));
 
-    const header    = { alg: 'ES256', typ: 'JWT', kid };
+    // Header has NO "typ" field — matching the docs example exactly
+    const header    = { alg: 'ES256', kid };
     const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url');
     const bodyB64   = Buffer.from(JSON.stringify(jwtPayload)).toString('base64url');
     const message   = `${headerB64}.${bodyB64}`;
 
-    // Private key MUST be PKCS#8 PEM format (BEGIN PRIVATE KEY)
-    // NOT the legacy SEC1 format (BEGIN EC PRIVATE KEY)
-    const privateKey = crypto.createPrivateKey({ key: pem, format: 'pem', type: 'pkcs8' });
+    const privateKey = crypto.createPrivateKey({ key: pem, format: 'pem' });
     const signature  = crypto.sign('sha256', Buffer.from(message), {
       key: privateKey,
       dsaEncoding: 'ieee-p1363',
@@ -143,10 +139,9 @@ module.exports = async function handler(req, res) {
     const token = `${message}.${signature.toString('base64url')}`;
     console.log("JWT created ✓, posting to:", apiUrl);
 
-    // ── POST raw PDF to Singpass ───────────────────────────────────────────────
-    // Body:         raw PDF bytes (NOT multipart, NOT base64)
+    // ── POST raw PDF bytes to Singpass ─────────────────────────────────────────
     // Content-Type: application/octet-stream
-    // Authorization: Bearer <jwt>
+    // Body: raw PDF bytes
     const result = await new Promise((resolve, reject) => {
       const url     = new URL(apiUrl);
       const options = {
@@ -179,7 +174,6 @@ module.exports = async function handler(req, res) {
       request.end();
     });
 
-    // Singpass returns 201 Created on success
     if (result.status === 200 || result.status === 201) {
       let data;
       try { data = JSON.parse(result.body); }
@@ -203,7 +197,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Propagate Singpass error
     let detail = result.body;
     try { detail = JSON.parse(result.body); } catch (_) {}
     return res.status(502).json({
