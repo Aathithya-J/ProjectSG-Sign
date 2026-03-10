@@ -8,18 +8,18 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler
 
-JWKS_DATA = {
-    "keys": [
-        {
-            "kty": "EC",
-            "use": "sig",
-            "alg": "ES256",
-            "kid": "key-1",
-            "crv": "P-256",
-            "x": "0KkZV6JnKEEv-uIWryQPt3KifXPUSalgVcDgtBVd6Zc",
-            "y": "mbCIlUHU4DCgc3Y3d_Pr8kmeNRGUU7I5X-Jr-Fp_JGQ"
-        }
-    ]
+{
+  "keys": [
+    {
+      "kty": "EC",
+      "crv": "P-256",
+      "x": "htxdUAiHlysBzyvdSzdb-iuwM7ni1AaO5Bc__VdBQBs",
+      "y": "dN4JkHBS_alScY2q_dJh2uM08AFpMKPq2wbNKDQsJIY",
+      "kid": "a90580b7-34e8-4e4d-ab6a-03bd26249c7c",
+      "use": "sig",
+      "alg": "ES256"
+    }
+  ]
 }
 
 class Handler(BaseHTTPRequestHandler):
