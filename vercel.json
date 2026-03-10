@@ -15,7 +15,7 @@
     },
     {
       "src": "/api/jwks",
-      "dest": "/api/jwks.js"
+      "dest": "/api/jwks.py"
     },
     {
       "src": "/api/webhook/singpass",
