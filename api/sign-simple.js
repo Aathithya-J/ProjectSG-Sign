@@ -1,9 +1,9 @@
 const crypto = require('crypto');
-const https = require('https');
+const https  = require('https');
 
-// Correct endpoints per Singpass Sign V3 docs
-// Staging Base URL: https://staging.sign.singpass.gov.sg/api/v3
-// Production Base URL: https://app.sign.singpass.gov.sg/api/v3
+// Singpass Sign V3 endpoints (from official docs)
+// Staging:    https://staging.sign.singpass.gov.sg/api/v3
+// Production: https://app.sign.singpass.gov.sg/api/v3
 const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 const PROD_URL    = "https://app.sign.singpass.gov.sg/api/v3/sign-requests";
 
@@ -13,12 +13,12 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "POST")   return res.status(405).json({ error: "Method not allowed" });
 
   try {
-    const clientId   = process.env.SINGPASS_CLIENT_ID;
-    const pem        = (process.env.SINGPASS_PRIVATE_KEY_PEM || '').replace(/\\n/g, '\n');
-    const kid        = process.env.SINGPASS_KID;
+    const clientId    = process.env.SINGPASS_CLIENT_ID;
+    const pem         = (process.env.SINGPASS_PRIVATE_KEY_PEM || '').replace(/\\n/g, '\n');
+    const kid         = process.env.SINGPASS_KID;
     const webhookBase = process.env.WEBHOOK_BASE_URL;
 
     console.log("Env check:", {
@@ -31,11 +31,11 @@ module.exports = async function handler(req, res) {
     if (!clientId || !pem || !kid) {
       return res.status(500).json({
         error: "Missing required environment variables",
-        missing: { clientId: !clientId, pem: !pem, kid: !kid }
+        missing: { clientId: !clientId, pem: !pem, kid: !kid },
       });
     }
 
-    // Read raw body (bodyParser disabled)
+    // Read raw multipart body (from the browser form upload)
     const chunks = [];
     await new Promise((resolve, reject) => {
       req.on('data', chunk => chunks.push(chunk));
@@ -44,16 +44,16 @@ module.exports = async function handler(req, res) {
     });
     const rawBody = Buffer.concat(chunks);
 
-    // Parse multipart
-    const contentType = req.headers['content-type'] || '';
+    // Parse multipart to extract PDF bytes and form fields
+    const contentType   = req.headers['content-type'] || '';
     const boundaryMatch = contentType.match(/boundary=(.+)/);
     if (!boundaryMatch) {
       return res.status(400).json({ error: "No boundary in content-type" });
     }
 
-    const boundary = boundaryMatch[1];
+    const boundary    = boundaryMatch[1];
     const boundaryBuf = Buffer.from(`--${boundary}`);
-    const parts = [];
+    const parts       = [];
     let start = 0;
 
     while (start < rawBody.length) {
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
         if (name === 'file' && filenameMatch) {
           pdfFile  = part.content;
           fileName = filenameMatch[1];
-          console.log("PDF received:", fileName, "size:", pdfFile.length);
+          console.log("PDF received:", fileName, "size:", pdfFile.length, "bytes");
         } else {
           fields[name] = part.content.toString();
         }
@@ -97,89 +97,67 @@ module.exports = async function handler(req, res) {
 
     const isStaging = fields.staging !== '0';
     const apiUrl    = isStaging ? STAGING_URL : PROD_URL;
-    // The audience for the auth JWT must be the full endpoint URL
-    const audience  = apiUrl;
 
-    // --- Build auth-only JWT (sub/iss/aud/iat/exp/jti only) ---
-    // The doc metadata goes in the request BODY as JSON, not in the JWT
+    // ── Build JWT ──────────────────────────────────────────────────────────────
+    // Per official Singpass Sign V3 docs, JWT payload contains:
+    //   client_id, doc_name, sign_locations (or x/y/page for single sig),
+    //   iat, exp, jti — and optionally signer_uin_hash, webhook_url
+    //
+    // IMPORTANT: exp must be within 2 minutes of iat.
+    // There is NO aud/sub/iss in this JWT (unlike other Singpass APIs).
     const now = Math.floor(Date.now() / 1000);
     const jwtPayload = {
-      sub: clientId,
-      iss: clientId,
-      aud: audience,
+      client_id:      clientId,
+      doc_name:       fields.doc_name || fileName,
+      sign_locations: [{ page: 1, x: 0.72, y: 0.05 }],
       iat: now,
-      exp: now + 300,
+      exp: now + 110,   // 1m50s — safely within the 2-minute limit
       jti: crypto.randomUUID(),
     };
 
-    const header = { alg: 'ES256', typ: 'JWT', kid };
+    if (webhookBase) {
+      jwtPayload.webhook_url = `${webhookBase}/api/webhook/singpass`;
+    }
+
+    if (fields.signer_nric) {
+      jwtPayload.signer_uin_hash = crypto
+        .createHash('sha256')
+        .update(fields.signer_nric.trim().toUpperCase())
+        .digest('hex');
+    }
+
+    console.log("JWT payload:", JSON.stringify(jwtPayload, null, 2));
+
+    const header    = { alg: 'ES256', typ: 'JWT', kid };
     const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url');
     const bodyB64   = Buffer.from(JSON.stringify(jwtPayload)).toString('base64url');
     const message   = `${headerB64}.${bodyB64}`;
 
+    // Private key MUST be PKCS#8 PEM format (BEGIN PRIVATE KEY)
+    // NOT the legacy SEC1 format (BEGIN EC PRIVATE KEY)
     const privateKey = crypto.createPrivateKey({ key: pem, format: 'pem', type: 'pkcs8' });
     const signature  = crypto.sign('sha256', Buffer.from(message), {
       key: privateKey,
       dsaEncoding: 'ieee-p1363',
     });
     const token = `${message}.${signature.toString('base64url')}`;
-    console.log("JWT created ✓");
+    console.log("JWT created ✓, posting to:", apiUrl);
 
-    // --- Build request body ---
-    // Sign V3: POST multipart/form-data with:
-    //   - file: the PDF binary
-    //   - request: JSON metadata
-    const requestMeta = {
-      doc_name:       fields.doc_name || fileName,
-      sign_locations: [{ page: 1, x: 0.72, y: 0.05 }],
-    };
-
-    if (webhookBase) {
-      requestMeta.webhook_url = `${webhookBase}/api/webhook/singpass`;
-    }
-
-    if (fields.signer_nric) {
-      requestMeta.signer_uin_hash = crypto
-        .createHash('sha256')
-        .update(fields.signer_nric.trim().toUpperCase())
-        .digest('hex');
-    }
-
-    console.log("Request metadata:", JSON.stringify(requestMeta, null, 2));
-    console.log("Calling:", apiUrl);
-
-    // Build multipart body to send to Singpass
-    const bodyBoundary = crypto.randomUUID().replace(/-/g, '');
-    const metaJson     = JSON.stringify(requestMeta);
-
-    const multipartBody = Buffer.concat([
-      Buffer.from(
-        `--${bodyBoundary}\r\n` +
-        `Content-Disposition: form-data; name="request"\r\n` +
-        `Content-Type: application/json\r\n\r\n` +
-        `${metaJson}\r\n`
-      ),
-      Buffer.from(
-        `--${bodyBoundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
-        `Content-Type: application/octet-stream\r\n\r\n`
-      ),
-      pdfFile,
-      Buffer.from(`\r\n--${bodyBoundary}--\r\n`),
-    ]);
-
-    // Make HTTPS request
+    // ── POST raw PDF to Singpass ───────────────────────────────────────────────
+    // Body:         raw PDF bytes (NOT multipart, NOT base64)
+    // Content-Type: application/octet-stream
+    // Authorization: Bearer <jwt>
     const result = await new Promise((resolve, reject) => {
-      const url = new URL(apiUrl);
+      const url     = new URL(apiUrl);
       const options = {
         hostname: url.hostname,
         port:     443,
-        path:     url.pathname + url.search,
+        path:     url.pathname,
         method:   'POST',
         headers:  {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type':  `multipart/form-data; boundary=${bodyBoundary}`,
-          'Content-Length': multipartBody.length,
+          'Authorization':  `Bearer ${token}`,
+          'Content-Type':   'application/octet-stream',
+          'Content-Length': pdfFile.length,
         },
         timeout: 20000,
       };
@@ -189,19 +167,20 @@ module.exports = async function handler(req, res) {
         response.on('data', c => chunks.push(c));
         response.on('end', () => {
           const body = Buffer.concat(chunks).toString();
-          console.log("Singpass response status:", response.statusCode);
-          console.log("Singpass response body:", body.substring(0, 500));
+          console.log("Singpass status:", response.statusCode);
+          console.log("Singpass body:",   body.substring(0, 500));
           resolve({ status: response.statusCode, body });
         });
       });
 
       request.on('error',   reject);
-      request.on('timeout', () => { request.destroy(); reject(new Error('Request timeout')); });
-      request.write(multipartBody);
+      request.on('timeout', () => { request.destroy(); reject(new Error('Request timed out')); });
+      request.write(pdfFile);
       request.end();
     });
 
-    if (result.status >= 200 && result.status < 300) {
+    // Singpass returns 201 Created on success
+    if (result.status === 200 || result.status === 201) {
       let data;
       try { data = JSON.parse(result.body); }
       catch (e) {
@@ -210,7 +189,7 @@ module.exports = async function handler(req, res) {
 
       if (!data.request_id || !data.signing_url) {
         return res.status(502).json({
-          error: "Incomplete response from Singpass",
+          error:    "Incomplete response from Singpass",
           expected: ["request_id", "signing_url", "exchange_code"],
           received: Object.keys(data),
           data,
@@ -222,21 +201,22 @@ module.exports = async function handler(req, res) {
         signing_url:     data.signing_url,
         exchange_code:   data.exchange_code,
       });
-    } else {
-      let detail = result.body;
-      try { detail = JSON.parse(result.body); } catch (_) {}
-      return res.status(502).json({
-        error:  `Singpass API returned ${result.status}`,
-        status: result.status,
-        detail,
-        url: apiUrl,
-      });
     }
+
+    // Propagate Singpass error
+    let detail = result.body;
+    try { detail = JSON.parse(result.body); } catch (_) {}
+    return res.status(502).json({
+      error:  `Singpass API returned ${result.status}`,
+      status: result.status,
+      detail,
+      url: apiUrl,
+    });
 
   } catch (error) {
     console.error("Fatal error:", error.message, error.code);
     return res.status(500).json({
-      error:   "Failed to connect to Singpass API",
+      error:   "Internal server error",
       message: error.message,
       code:    error.code,
     });

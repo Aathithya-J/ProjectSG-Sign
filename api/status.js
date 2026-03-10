@@ -1,6 +1,8 @@
 const crypto = require("crypto");
 
-// Correct endpoints per Singpass Sign V3 docs
+// Singpass Sign V3 endpoints (from official docs)
+// Staging:    https://staging.sign.singpass.gov.sg/api/v3
+// Production: https://app.sign.singpass.gov.sg/api/v3
 const STAGING_BASE = "https://staging.sign.singpass.gov.sg/api/v3";
 const PROD_BASE    = "https://app.sign.singpass.gov.sg/api/v3";
 
@@ -20,22 +22,10 @@ function makeJwt(payload, pem, kid) {
   return `${msg}.${b64url(sig)}`;
 }
 
-function authToken(clientId, pem, kid, audience) {
-  const now = Math.floor(Date.now() / 1000);
-  return makeJwt({
-    sub: clientId,
-    iss: clientId,
-    aud: audience,
-    iat: now,
-    exp: now + 110,
-    jti: crypto.randomUUID(),
-  }, pem, kid);
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "GET")    return res.status(405).json({ error: "Method not allowed" });
 
   try {
     const { id: reqId, exchange_code: exchangeCode, staging } = req.query;
@@ -54,11 +44,18 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ error: "Missing env vars" });
     }
 
-    // GET /api/v3/sign-requests/{requestId}/result
+    // POST /api/v3/sign-requests/{requestId}/result
     const resultUrl = `${apiBase}/sign-requests/${reqId}/result`;
-    console.log("Status check URL:", resultUrl);
+    console.log("Status check:", resultUrl);
 
-    const token = authToken(clientId, pem, kid, resultUrl);
+    // JWT for this call — minimal auth token
+    const now = Math.floor(Date.now() / 1000);
+    const token = makeJwt({
+      client_id: clientId,
+      iat: now,
+      exp: now + 110,
+      jti: crypto.randomUUID(),
+    }, pem, kid);
 
     const response = await fetch(resultUrl, {
       method: "POST",
