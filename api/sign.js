@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
-const STAGING_URL = "https://staging.sign.singpass.gov.sg/v3/sign-requests";
-const PROD_URL = "https://sign.singpass.gov.sg/v3/sign-requests";
+const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
+const PROD_URL = "https://sign.singpass.gov.sg/api/v3/sign-requests";
 
 function createJWT(payload, pem, kid) {
   // Clean up the PEM - remove any escaped newlines
@@ -133,7 +133,9 @@ module.exports = async function handler(req, res) {
   try {
     // Get environment variables
     const clientId = process.env.SINGPASS_CLIENT_ID;
-    const pem = process.env.SINGPASS_PRIVATE_KEY_PEM || '';
+
+    const pem = process.env.SINGPASS_PRIVATE_KEY || process.env.SINGPASS_PRIVATE_KEY_PEM || '';
+
     const kid = process.env.SINGPASS_KID;
     const webhookBase = process.env.WEBHOOK_BASE_URL;
 
