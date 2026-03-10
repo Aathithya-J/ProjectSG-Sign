@@ -16,8 +16,8 @@ JWKS_DATA = {
             "alg": "ES256",
             "kid": "key-1",
             "crv": "P-256",
-            "x": "0m9oSHqoBGQaVZhHkmt_gzdkCERIvUV3V6V1vC5qRK0",
-            "y": "g1nfKEFGXIJwDU-ArQsEdfXQZrubK05tgzdk-r0evlk"
+            "x": "4wZbHfagUwNNbTz-JE0j4Uqw-GBz7pjN6wlY9P9FamI",
+            "y": "qbqv32op--dsScWwmDt6dKLqPC-zlnVis_1TjdVf6vA"
         }
     ]
 }
