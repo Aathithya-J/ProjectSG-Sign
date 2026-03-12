@@ -1,4 +1,10 @@
 {
-  "name": "singpass-sign",
-  "version": "1.0.0"
+  "version": 2,
+  "routes": [
+    { "src": "/api/sign",               "dest": "/api/sign.js" },
+    { "src": "/api/status",             "dest": "/api/status.js" },
+    { "src": "/api/jwks",               "dest": "/api/jwks.js" },
+    { "src": "/api/webhook/singpass",   "dest": "/api/webhook/singpass.js" },
+    { "src": "/(.*)",                   "dest": "/index.html" }
+  ]
 }

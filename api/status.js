@@ -1,99 +1,94 @@
-const crypto = require("crypto");
+// api/status.js
+// Polls Singpass for signing completion given a sign_request_id.
+// Returns { status, signed_doc_url } once complete.
 
-// Singpass Sign V3 endpoints (from official docs)
-// Staging:    https://staging.sign.singpass.gov.sg/api/v3
-// Production: https://app.sign.singpass.gov.sg/api/v3
-const STAGING_BASE = "https://staging.sign.singpass.gov.sg/api/v3";
-const PROD_BASE    = "https://app.sign.singpass.gov.sg/api/v3";
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
-function b64url(buf) {
-  return Buffer.from(buf).toString("base64url");
-}
-
-function makeJwt(payload, pem, kid) {
-  const header = b64url(JSON.stringify({ alg: "ES256", typ: "JWT", kid }));
-  const body   = b64url(JSON.stringify(payload));
-  const msg    = `${header}.${body}`;
-  const keyObj = crypto.createPrivateKey({ key: pem, format: "pem", type: "pkcs8" });
-  const sig    = crypto.sign("sha256", Buffer.from(msg), {
-    key: keyObj,
-    dsaEncoding: "ieee-p1363",
-  });
-  return `${msg}.${b64url(sig)}`;
-}
-
-module.exports = async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "GET")    return res.status(405).json({ error: "Method not allowed" });
+  const { sign_request_id } = req.query;
+  if (!sign_request_id) {
+    return res.status(400).json({ error: 'Missing sign_request_id query param' });
+  }
 
   try {
-    const { id: reqId, exchange_code: exchangeCode, staging } = req.query;
-    const isStaging = (staging ?? "1") === "1";
+    // ── Rebuild JWT for the status call ──────────────────────────────────
+    // The Get Signing Result endpoint also requires a Bearer JWT
+    const clientId = process.env.SINGPASS_CLIENT_ID;
+    const kid = process.env.SINGPASS_KID;
+    const rawPem = process.env.SINGPASS_PRIVATE_KEY_PEM;
 
-    if (!reqId || !exchangeCode) {
-      return res.status(400).json({ error: "Missing id or exchange_code" });
+    if (!clientId || !kid || !rawPem) {
+      return res.status(500).json({ error: 'Missing Singpass environment variables' });
     }
 
-    const clientId = process.env.SINGPASS_CLIENT_ID || "";
-    const pem      = (process.env.SINGPASS_PRIVATE_KEY_PEM || "").replace(/\\n/g, "\n");
-    const kid      = process.env.SINGPASS_KID || "";
-    const apiBase  = isStaging ? STAGING_BASE : PROD_BASE;
+    const privateKeyPem = rawPem.replace(/\\n/g, '\n');
+    const jwt = buildStatusJwt({ clientId, kid, privateKeyPem, signRequestId: sign_request_id });
 
-    if (!clientId || !pem || !kid) {
-      return res.status(500).json({ error: "Missing env vars" });
+    // ── Call Singpass Get Signing Result ──────────────────────────────────
+    const singpassBase = 'https://staging.sign.singpass.gov.sg/api/v3';
+    const singpassRes = await fetch(
+      `${singpassBase}/sign-requests/${encodeURIComponent(sign_request_id)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+        },
+      }
+    );
+
+    if (!singpassRes.ok) {
+      const errText = await singpassRes.text();
+      console.error('Singpass status error', singpassRes.status, errText);
+      return res.status(502).json({
+        error: 'Singpass API error',
+        status: singpassRes.status,
+        detail: errText,
+      });
     }
 
-    // POST /api/v3/sign-requests/{requestId}/result
-    const resultUrl = `${apiBase}/sign-requests/${reqId}/result`;
-    console.log("Status check:", resultUrl);
-
-    // JWT for this call — minimal auth token
-    const now = Math.floor(Date.now() / 1000);
-    const token = makeJwt({
-      client_id: clientId,
-      iat: now,
-      exp: now + 110,
-      jti: crypto.randomUUID(),
-    }, pem, kid);
-
-    const response = await fetch(resultUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Content-Type":  "application/json",
-      },
-      body: JSON.stringify({ exchange_code: exchangeCode }),
+    const data = await singpassRes.json();
+    // Singpass returns: { status: "completed"|"pending"|"expired", signed_doc_url? }
+    return res.status(200).json({
+      status: data.status,
+      signed_doc_url: data.signed_doc_url ?? null,
     });
-
-    const text = await response.text();
-    console.log("Status response:", response.status, text.substring(0, 300));
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: `Singpass API ${response.status}`,
-        detail: text,
-      });
-    }
-
-    let data;
-    try { data = JSON.parse(text); }
-    catch (e) {
-      return res.status(502).json({ error: "Invalid JSON from Singpass", detail: text });
-    }
-
-    if (data.download_url || data.signed_doc_url) {
-      return res.status(200).json({
-        status:         "signed",
-        signed_doc_url: data.download_url || data.signed_doc_url,
-        signed_at:      data.signed_at || null,
-      });
-    }
-
-    return res.status(200).json({ status: "pending" });
-
-  } catch (e) {
-    console.error("Status handler error:", e);
-    return res.status(500).json({ status: "error", error: e.message });
+  } catch (err) {
+    console.error('status.js error', err);
+    return res.status(500).json({ error: err.message });
   }
-};
+}
+
+// ─── JWT builder (minimal payload for status/GET requests) ──────────────────
+
+import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
+
+function base64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function buildStatusJwt({ clientId, kid, privateKeyPem, signRequestId }) {
+  const header = base64url(Buffer.from(JSON.stringify({ alg: 'ES256', kid })));
+  const now = Math.floor(Date.now() / 1000);
+  const payload = base64url(
+    Buffer.from(
+      JSON.stringify({
+        client_id: clientId,
+        sign_request_id: signRequestId,
+        iat: now,
+        jti: uuidv4(),
+      })
+    )
+  );
+
+  const signingInput = `${header}.${payload}`;
+  const privateKey = crypto.createPrivateKey({ key: privateKeyPem, format: 'pem' });
+  const sigBuf = crypto.sign('sha256', Buffer.from(signingInput), {
+    key: privateKey,
+    dsaEncoding: 'ieee-p1363',
+  });
+
+  return `${signingInput}.${base64url(sigBuf)}`;
+}

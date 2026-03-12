@@ -1,364 +1,217 @@
-const crypto = require('crypto');
+// api/sign.js
+// Receives a PDF upload from the frontend, builds a JWT per Sign V3 spec,
+// POSTs raw PDF bytes to Singpass, and returns sign_request_id / signing_url / exchange_code.
 
-const STAGING_URL = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
-const PROD_URL = "https://sign.singpass.gov.sg/api/v3/sign-requests";
+import crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid';
 
-function createJWT(payload, pem, kid) {
-  // Clean up the PEM - remove any escaped newlines
-  const cleanPem = pem.replace(/\\n/g, '\n').trim();
-  
-  console.log("PEM starts with:", cleanPem.substring(0, 50));
-  
-  // Create header
-  const header = {
-    alg: 'ES256',
-    typ: 'JWT',
-    kid: kid
-  };
-  
-  const headerB64 = Buffer.from(JSON.stringify(header)).toString('base64url');
-  const bodyB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const message = `${headerB64}.${bodyB64}`;
-  
-  // Try different key formats
- // Replace the key loading section (from line ~40-75) with this:
-let key;
-const errors = [];
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-try {
-  // Try to load as-is first
-  key = crypto.createPrivateKey({
-    key: cleanPem,
-    format: 'pem'
+function base64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+/**
+ * Build a Sign V3 JWT.
+ *
+ * Verified structure from official docs example JWT:
+ *   Header  : { "alg": "ES256", "kid": "<kid>" }   — NO "typ" field
+ *   Payload : { client_id, doc_name, x, y, page, iat, jti }
+ *              x / y / page are TOP-LEVEL fields — NO exp field
+ *   Signature: ES256, IEEE P1363 format (raw 64-byte r‖s)
+ */
+function buildJwt({ clientId, docName, x, y, page, privateKeyPem, kid }) {
+  // Header — alg + kid only, no typ
+  const header = base64url(Buffer.from(JSON.stringify({ alg: 'ES256', kid })));
+
+  // Payload — top-level x, y, page; iat in seconds; jti as UUID; no exp
+  const now = Math.floor(Date.now() / 1000);
+  const payload = base64url(
+    Buffer.from(
+      JSON.stringify({
+        client_id: clientId,
+        doc_name: docName,
+        x,
+        y,
+        page,
+        iat: now,
+        jti: uuidv4(),
+      })
+    )
+  );
+
+  const signingInput = `${header}.${payload}`;
+
+  // Load key — no "type" specified, just pem + format
+  const privateKey = crypto.createPrivateKey({ key: privateKeyPem, format: 'pem' });
+
+  // Sign with SHA-256 + IEEE P1363 encoding (raw 64-byte r‖s, NOT DER)
+  const sigBuf = crypto.sign('sha256', Buffer.from(signingInput), {
+    key: privateKey,
+    dsaEncoding: 'ieee-p1363',
   });
-  console.log("Successfully loaded private key");
-} catch (err) {
-  console.error("Failed to load private key:", err.message);
-  
-  // If it's an unsupported format error, try to convert it
-  if (err.message.includes('UNSUPPORTED')) {
-    try {
-      // For ES256 keys, we need to ensure it's in PKCS#8 format
-      // Since we can't convert in code easily, we'll throw a clear error
-      throw new Error(
-        'Private key format not supported. Please use the converted PKCS#8 format:\n' +
-        '-----BEGIN PRIVATE KEY-----\n' +
-        'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg4ICYKDqxAySgsUxR\n' +
-        'nNA59LWMoppfM5wFXef1hc59yGOhRANCAATSb2hIeqgEZBpVmEeSa3+DN2QIREi9\n' +
-        'RXdXpXWvLmpErYNZ3yhBRlyCcA1PgK0LBHX10Ga7mytObYM3ZPq9Hr5Z\n' +
-        '-----END PRIVATE KEY-----'
-      );
-    } catch (conversionError) {
-      throw conversionError;
-    }
-  } else {
-    throw err;
-  }
-}
-  
-  // Sign the message
-  const signature = crypto.sign('sha256', Buffer.from(message), {
-    key: key,
-    dsaEncoding: 'ieee-p1363'
-  });
-  
-  return `${message}.${signature.toString('base64url')}`;
+
+  return `${signingInput}.${base64url(sigBuf)}`;
 }
 
-// Helper function to parse multipart form data
-function parseMultipart(body, boundary) {
-  const parts = [];
-  const boundaryBuffer = Buffer.from(`--${boundary}`);
-  let start = 0;
-  
-  while (start < body.length) {
-    // Find next boundary
-    const boundaryIndex = body.indexOf(boundaryBuffer, start);
-    if (boundaryIndex === -1) break;
-    
-    start = boundaryIndex + boundaryBuffer.length;
-    
-    // Check if this is the last boundary
-    if (body[start] === 0x2d && body[start + 1] === 0x2d) break;
-    
-    // Skip CRLF after boundary
-    if (body[start] === 0x0d) start += 2;
-    
-    // Find end of headers
-    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), start);
-    if (headerEnd === -1) break;
-    
-    // Extract headers
-    const headers = body.slice(start, headerEnd).toString();
-    start = headerEnd + 4;
-    
-    // Find next boundary to determine content end
-    const nextBoundary = body.indexOf(boundaryBuffer, start);
-    const contentEnd = nextBoundary !== -1 ? nextBoundary - 2 : body.length;
-    const content = body.slice(start, contentEnd);
-    
-    // Parse headers to get field info
-    const nameMatch = headers.match(/name="([^"]+)"/);
-    const filenameMatch = headers.match(/filename="([^"]+)"/);
-    
-    parts.push({
-      headers,
-      name: nameMatch ? nameMatch[1] : null,
-      filename: filenameMatch ? filenameMatch[1] : null,
-      content
-    });
-    
-    start = nextBoundary !== -1 ? nextBoundary : body.length;
-  }
-  
-  return parts;
-}
+// ─── main handler ───────────────────────────────────────────────────────────
 
-module.exports = async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-  
-  // Only allow POST
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
+export const config = {
+  api: {
+    bodyParser: false, // We read raw multipart manually
+  },
+};
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Get environment variables
+    // ── 1. Parse multipart form-data to extract the PDF ──────────────────
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = Buffer.concat(chunks);
+
+    // Extract boundary from Content-Type header
+    const contentType = req.headers['content-type'] || '';
+    const boundaryMatch = contentType.match(/boundary=([^\s;]+)/);
+    if (!boundaryMatch) {
+      return res.status(400).json({ error: 'Missing multipart boundary' });
+    }
+    const boundary = boundaryMatch[1];
+
+    // Parse out the PDF part
+    const pdfBuffer = extractFilePart(body, boundary);
+    if (!pdfBuffer) {
+      return res.status(400).json({ error: 'No PDF file found in form upload' });
+    }
+
+    // ── 2. Extract signing params from form fields ────────────────────────
+    const fields = extractFormFields(body, boundary);
+    const docName = fields.doc_name || 'document.pdf';
+    const x = Number(fields.x ?? 1);
+    const y = Number(fields.y ?? 1);
+    const page = Number(fields.page ?? 1);
+
+    // ── 3. Load environment variables ────────────────────────────────────
     const clientId = process.env.SINGPASS_CLIENT_ID;
-
-    const pem = process.env.SINGPASS_PRIVATE_KEY || process.env.SINGPASS_PRIVATE_KEY_PEM || '';
-
     const kid = process.env.SINGPASS_KID;
+    const rawPem = process.env.SINGPASS_PRIVATE_KEY_PEM;
     const webhookBase = process.env.WEBHOOK_BASE_URL;
 
-    // Log environment check (without exposing sensitive data)
-    console.log("Environment check:", {
-      clientId: clientId ? '✓' : '✗',
-      pemLength: pem.length,
-      kid: kid ? '✓' : '✗',
-      webhookBase: webhookBase || '✗'
-    });
-
-    // Validate required env vars
-    if (!clientId || !pem || !kid) {
-      return res.status(500).json({ 
-        error: "Missing required environment variables",
-        missing: {
-          clientId: !clientId,
-          pem: !pem,
-          kid: !kid
-        }
-      });
+    if (!clientId || !kid || !rawPem) {
+      return res.status(500).json({ error: 'Missing Singpass environment variables' });
     }
 
-    // Read raw request body
-    const chunks = [];
-    await new Promise((resolve, reject) => {
-      req.on('data', chunk => chunks.push(chunk));
-      req.on('end', resolve);
-      req.on('error', reject);
-    });
-    
-    const rawBody = Buffer.concat(chunks);
-    console.log("Raw body size:", rawBody.length);
-    
-    // Get content type and extract boundary
-    const contentType = req.headers['content-type'] || '';
-    const boundaryMatch = contentType.match(/boundary=(.+)/);
-    
-    if (!boundaryMatch) {
-      return res.status(400).json({ 
-        error: "No boundary in content-type",
-        contentType 
-      });
-    }
+    // Vercel stores multi-line PEM with literal \n — restore real newlines
+    const privateKeyPem = rawPem.replace(/\\n/g, '\n');
 
-    // Parse multipart data
-    const boundary = boundaryMatch[1];
-    const parts = parseMultipart(rawBody, boundary);
-    
-    console.log(`Found ${parts.length} parts in multipart data`);
-    
-    // Extract PDF file and form fields
-    let pdfFile = null;
-    let fileName = 'document.pdf';
-    const fields = {};
+    // ── 4. Build JWT ──────────────────────────────────────────────────────
+    const jwt = buildJwt({ clientId, docName, x, y, page, privateKeyPem, kid });
 
-    for (const part of parts) {
-      if (part.name === 'file' && part.filename) {
-        pdfFile = part.content;
-        fileName = part.filename;
-        console.log(`Found PDF file: ${fileName}, size: ${part.content.length} bytes`);
-        
-        // Verify PDF signature (starts with %PDF)
-        if (part.content.length > 4 && 
-            part.content[0] === 0x25 && // %
-            part.content[1] === 0x50 && // P
-            part.content[2] === 0x44 && // D
-            part.content[3] === 0x46) { // F
-          console.log("✓ PDF signature verified");
-        } else {
-          console.log("⚠ Warning: File may not be a valid PDF");
-        }
-      } else if (part.name) {
-        fields[part.name] = part.content.toString();
-        console.log(`Found field: ${part.name} = ${fields[part.name]}`);
-      }
-    }
+    // ── 5. POST raw PDF bytes to Singpass ─────────────────────────────────
+    //   Endpoint : POST /api/v3/sign-requests
+    //   Headers  : Authorization: Bearer <jwt>
+    //              Content-Type: application/octet-stream
+    //   Body     : raw PDF bytes — nothing else
+    const singpassBase = 'https://staging.sign.singpass.gov.sg/api/v3';
+    const webhookUrl = webhookBase
+      ? `${webhookBase}/api/webhook/singpass`
+      : undefined;
 
-    // Validate PDF file
-    if (!pdfFile) {
-      return res.status(400).json({ 
-        error: "No PDF file found in request",
-        partsFound: parts.map(p => ({ 
-          name: p.name, 
-          hasFilename: !!p.filename,
-          size: p.content.length 
-        }))
-      });
-    }
-
-    // Get staging flag from form fields (default to true for staging)
-    const isStaging = fields.staging !== 'false' && fields.staging !== '0';
-    
-    // Get document name from fields or use filename
-    const docName = fields.doc_name || fileName;
-    
-    // Create JWT payload
-    const now = Math.floor(Date.now() / 1000);
-    const payload = {
-      client_id: clientId,
-      doc_name: docName,
-      sign_locations: [{
-        page: 1,
-        x: 0.72,
-        y: 0.05
-      }],
-      iat: now,
-      exp: now + 300, // 5 minutes
-      jti: crypto.randomUUID(),
-    };
-
-    // Add webhook if available
-    if (webhookBase) {
-      payload.webhook_url = `${webhookBase}/api/webhook/singpass`;
-    }
-
-    // Add signer NRIC hash if provided
-    if (fields.signer_nric) {
-      const nricHash = crypto
-        .createHash('sha256')
-        .update(fields.signer_nric.trim().toUpperCase())
-        .digest('hex');
-      payload.signer_uin_hash = nricHash;
-      console.log("Added signer NRIC hash");
-    }
-
-    console.log("JWT payload:", JSON.stringify(payload, null, 2));
-
-    // Create JWT token
-    let token;
-    try {
-      token = createJWT(payload, pem, kid);
-      console.log("✓ JWT created successfully");
-      console.log("Token starts with:", token.substring(0, 50) + "...");
-    } catch (jwtError) {
-      console.error("✗ JWT creation failed:", jwtError);
-      return res.status(500).json({
-        error: "Failed to create JWT",
-        detail: jwtError.message
-      });
-    }
-
-    // Select API endpoint based on staging flag
-    const apiUrl = isStaging ? STAGING_URL : PROD_URL;
-    console.log(`Calling Singpass API (${isStaging ? 'staging' : 'production'}):`, apiUrl);
-
-    // Make request to Singpass
-    const response = await fetch(apiUrl, {
+    const singpassRes = await fetch(`${singpassBase}/sign-requests`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        Authorization: `Bearer ${jwt}`,
         'Content-Type': 'application/octet-stream',
-        'User-Agent': 'Singpass-App/1.0'
+        ...(webhookUrl ? { 'X-Webhook-Url': webhookUrl } : {}),
       },
-      body: pdfFile
+      body: pdfBuffer,
     });
 
-    // Get response
-    const responseText = await response.text();
-    console.log("Response status:", response.status);
-    console.log("Response headers:", Object.fromEntries(response.headers));
-    
-    // Log response body (first 500 chars only to avoid huge logs)
-    console.log("Response body:", responseText.substring(0, 500));
-
-    // Handle error responses
-    if (!response.ok) {
-      let errorDetail = responseText;
-      try {
-        // Try to parse as JSON for better error details
-        const errorJson = JSON.parse(responseText);
-        errorDetail = errorJson;
-      } catch (e) {
-        // Keep as text if not JSON
-      }
-
-      return res.status(response.status).json({
-        error: `Singpass API returned ${response.status}`,
-        detail: errorDetail,
-        headers: Object.fromEntries(response.headers)
-      });
-    }
-
-    // Parse successful response
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
+    // ── 6. Handle response — success is HTTP 201 (also accept 200) ────────
+    if (singpassRes.status !== 201 && singpassRes.status !== 200) {
+      const errText = await singpassRes.text();
+      console.error('Singpass error', singpassRes.status, errText);
       return res.status(502).json({
-        error: "Invalid JSON response from Singpass",
-        body: responseText.substring(0, 200)
+        error: 'Singpass API error',
+        status: singpassRes.status,
+        detail: errText,
       });
     }
 
-    // Validate response has required fields
-    if (!data.request_id || !data.signing_url) {
-      return res.status(502).json({
-        error: "Incomplete response from Singpass",
-        expected: ["request_id", "signing_url", "exchange_code"],
-        received: Object.keys(data),
-        data: data
-      });
-    }
-
-    // Return success response
+    const data = await singpassRes.json();
+    // Singpass returns: { sign_request_id, signing_url, exchange_code }
     return res.status(200).json({
-      sign_request_id: data.request_id,
+      sign_request_id: data.sign_request_id,
       signing_url: data.signing_url,
-      exchange_code: data.exchange_code
+      exchange_code: data.exchange_code,
     });
-
-  } catch (error) {
-    console.error("Fatal error:", error);
-    return res.status(500).json({
-      error: "Internal server error",
-      message: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+  } catch (err) {
+    console.error('sign.js error', err);
+    return res.status(500).json({ error: err.message });
   }
-};
+}
 
-module.exports.config = {
-  api: {
-    bodyParser: false
+// ─── multipart helpers ───────────────────────────────────────────────────────
+
+function extractFilePart(body, boundary) {
+  const boundaryBuf = Buffer.from(`--${boundary}`);
+  let start = 0;
+  while (start < body.length) {
+    const boundaryIdx = body.indexOf(boundaryBuf, start);
+    if (boundaryIdx === -1) break;
+
+    const headerStart = boundaryIdx + boundaryBuf.length + 2; // skip CRLF
+    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
+    if (headerEnd === -1) break;
+
+    const headerStr = body.slice(headerStart, headerEnd).toString('utf8');
+
+    // Find the next boundary to delimit part body
+    const nextBoundary = body.indexOf(boundaryBuf, headerEnd + 4);
+    const partEnd = nextBoundary === -1 ? body.length : nextBoundary - 2; // trim trailing CRLF
+    const partBody = body.slice(headerEnd + 4, partEnd);
+
+    // Look for file part (Content-Type: application/pdf or filename=)
+    if (
+      headerStr.includes('filename=') ||
+      headerStr.toLowerCase().includes('application/pdf') ||
+      headerStr.toLowerCase().includes('application/octet-stream')
+    ) {
+      return partBody;
+    }
+    start = boundaryIdx + boundaryBuf.length;
   }
-};
+  return null;
+}
+
+function extractFormFields(body, boundary) {
+  const boundaryBuf = Buffer.from(`--${boundary}`);
+  const fields = {};
+  let start = 0;
+  while (start < body.length) {
+    const boundaryIdx = body.indexOf(boundaryBuf, start);
+    if (boundaryIdx === -1) break;
+
+    const headerStart = boundaryIdx + boundaryBuf.length + 2;
+    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
+    if (headerEnd === -1) break;
+
+    const headerStr = body.slice(headerStart, headerEnd).toString('utf8');
+    const nextBoundary = body.indexOf(boundaryBuf, headerEnd + 4);
+    const partEnd = nextBoundary === -1 ? body.length : nextBoundary - 2;
+    const partBody = body.slice(headerEnd + 4, partEnd).toString('utf8').trim();
+
+    // Only treat as text field if no filename= present
+    if (!headerStr.includes('filename=')) {
+      const nameMatch = headerStr.match(/name="([^"]+)"/);
+      if (nameMatch) {
+        fields[nameMatch[1]] = partBody;
+      }
+    }
+    start = boundaryIdx + boundaryBuf.length;
+  }
+  return fields;
+}
