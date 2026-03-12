@@ -6,7 +6,6 @@
   <title>Sign with Singpass</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #f0f4f8;
@@ -16,40 +15,24 @@
       justify-content: center;
       padding: 24px;
     }
-
     .card {
       background: #fff;
       border-radius: 16px;
       box-shadow: 0 4px 24px rgba(0,0,0,.10);
       padding: 40px 36px;
       width: 100%;
-      max-width: 520px;
+      max-width: 540px;
     }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-    .logo svg { flex-shrink: 0; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
     .logo-text { font-size: 20px; font-weight: 700; color: #1a1a2e; }
     .logo-sub  { font-size: 13px; color: #64748b; }
-
     h1 { font-size: 22px; font-weight: 700; color: #1a1a2e; margin-bottom: 6px; }
     p.desc { font-size: 14px; color: #64748b; margin-bottom: 28px; line-height: 1.6; }
-
     label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-
     .upload-zone {
-      border: 2px dashed #cbd5e1;
-      border-radius: 10px;
-      padding: 32px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color .2s, background .2s;
-      margin-bottom: 20px;
-      position: relative;
+      border: 2px dashed #cbd5e1; border-radius: 10px; padding: 32px 20px;
+      text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+      margin-bottom: 20px; position: relative;
     }
     .upload-zone:hover, .upload-zone.drag { border-color: #e1081c; background: #fff5f5; }
     .upload-zone input[type=file] {
@@ -59,143 +42,101 @@
     .upload-zone p { font-size: 14px; color: #64748b; }
     .upload-zone strong { color: #e1081c; }
     .file-chosen { font-size: 13px; color: #0f766e; font-weight: 600; margin-top: 8px; }
-
     .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
     .field { display: flex; flex-direction: column; }
     .field label { margin-bottom: 4px; }
     .field input {
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 14px;
-      color: #1a1a2e;
-      transition: border-color .2s;
+      border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px;
+      font-size: 14px; color: #1a1a2e; transition: border-color .2s;
     }
     .field input:focus { outline: none; border-color: #e1081c; }
-
     .btn-singpass {
-      width: 100%;
-      background: #e1081c;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
+      width: 100%; background: #e1081c; color: #fff; border: none; border-radius: 10px;
+      padding: 14px; font-size: 16px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
       transition: background .2s, transform .1s;
     }
     .btn-singpass:hover:not(:disabled) { background: #b5060f; }
     .btn-singpass:active:not(:disabled) { transform: scale(.98); }
     .btn-singpass:disabled { background: #94a3b8; cursor: not-allowed; }
 
-    .status-box {
-      display: none;
-      margin-top: 24px;
-      padding: 18px 20px;
-      border-radius: 10px;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
+    /* Debug / status log */
+    .log-box {
+      display: none; margin-top: 20px; background: #0f172a; border-radius: 10px;
+      padding: 14px 16px; font-family: monospace; font-size: 12px;
+      max-height: 220px; overflow-y: auto;
     }
-    .status-box.visible { display: block; }
+    .log-box.visible { display: block; }
+    .log-line { margin-bottom: 4px; }
+    .log-line.info  { color: #94a3b8; }
+    .log-line.ok    { color: #4ade80; }
+    .log-line.warn  { color: #fbbf24; }
+    .log-line.error { color: #f87171; }
 
-    .status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    /* Signing link panel */
+    .sign-panel {
+      display: none; margin-top: 20px; background: #f8fafc;
+      border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px;
+    }
+    .sign-panel.visible { display: block; }
+    .sign-panel h3 { font-size: 15px; font-weight: 700; color: #1a1a2e; margin-bottom: 12px; }
+    .sign-url {
+      font-size: 11px; font-family: monospace; color: #475569;
+      word-break: break-all; background: #e2e8f0; padding: 8px 10px;
+      border-radius: 6px; margin-bottom: 12px; display: block;
+    }
+    .btn-open {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #0f172a; color: #fff; border: none; border-radius: 8px;
+      padding: 11px 20px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none; transition: background .2s;
+    }
+    .btn-open:hover { background: #1e293b; }
+    .poll-status { font-size: 13px; color: #64748b; margin-top: 12px; display: flex; align-items: center; gap: 8px; }
     .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid #cbd5e1;
-      border-top-color: #e1081c;
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-      flex-shrink: 0;
+      width: 14px; height: 14px; border: 2px solid #cbd5e1;
+      border-top-color: #e1081c; border-radius: 50%;
+      animation: spin .7s linear infinite; flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .status-text { font-size: 14px; color: #374151; font-weight: 600; }
-    .status-id   { font-size: 12px; color: #94a3b8; font-family: monospace; word-break: break-all; }
-
-    .sign-link-box {
-      display: none;
-      margin-top: 16px;
-    }
-    .sign-link-box.visible { display: block; }
-
-    .sign-link-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 8px; }
-    .sign-link-url {
-      display: block;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 12px;
-      color: #1a1a2e;
-      font-family: monospace;
-      word-break: break-all;
-      margin-bottom: 10px;
-    }
-
-    .btn-open-sign {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #0f172a;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      padding: 10px 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background .2s;
-    }
-    .btn-open-sign:hover { background: #1e293b; }
-
-    .result-box {
-      display: none;
-      margin-top: 16px;
-      padding: 16px 18px;
-      border-radius: 10px;
-    }
+    /* Result */
+    .result-box { display: none; margin-top: 16px; padding: 16px 18px; border-radius: 10px; }
     .result-box.success { display: block; background: #f0fdf4; border: 1px solid #bbf7d0; }
     .result-box.error   { display: block; background: #fff1f2; border: 1px solid #fecdd3; }
-
     .result-box h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
     .result-box.success h3 { color: #15803d; }
     .result-box.error   h3 { color: #be123c; }
-
-    .result-box a {
-      display: inline-block;
-      margin-top: 8px;
-      font-size: 13px;
-      color: #0369a1;
-      word-break: break-all;
-    }
-
-    .small { font-size: 12px; color: #94a3b8; margin-top: 16px; text-align: center; }
+    .result-box p { font-size: 13px; color: #374151; line-height: 1.6; }
+    .result-box a { color: #0369a1; word-break: break-all; }
+    .small { font-size: 12px; color: #94a3b8; margin-top: 20px; text-align: center; }
   </style>
 </head>
 <body>
 <div class="card">
 
   <div class="logo">
-    <!-- Singpass-style shield icon -->
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
       <rect width="36" height="36" rx="8" fill="#e1081c"/>
       <path d="M18 6L8 10v9c0 5.5 4.3 10.6 10 12 5.7-1.4 10-6.5 10-12V10L18 6z" fill="white"/>
       <path d="M15 17.5l2.5 2.5 4.5-5" stroke="#e1081c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     <div>
       <div class="logo-text">Sign with Singpass</div>
-      <div class="logo-sub">V3 Integration</div>
+      <div class="logo-sub">V3 · Staging</div>
     </div>
   </div>
 
+  <!-- ── Redirect-back banner (shown when Singpass returns user here) ── -->
+  <div id="redirectBanner" style="display:none; background:#fefce8; border:1px solid #fde047;
+       border-radius:10px; padding:14px 16px; margin-bottom:20px; font-size:14px; color:#713f12;">
+    <strong>↩ Returned from Singpass.</strong>
+    Status: <span id="redirectStatus" style="font-weight:700;"></span> ·
+    Request ID: <code id="redirectReqId" style="font-size:12px;"></code>
+  </div>
+
   <h1>Upload &amp; Sign Document</h1>
-  <p class="desc">Upload a PDF, set the signature location, then open the Singpass signing portal to complete your digital signature.</p>
+  <p class="desc">Upload a PDF, set the signature location, then get redirected to the Singpass signing portal.</p>
 
   <label>PDF Document</label>
   <div class="upload-zone" id="uploadZone">
@@ -209,74 +150,100 @@
   <div class="row">
     <div class="field">
       <label for="sigX">X position</label>
-      <input type="number" id="sigX" value="1" min="0" max="1" step="0.01" placeholder="0–1" />
+      <input type="number" id="sigX" value="0.5" min="0" max="1" step="0.01" />
     </div>
     <div class="field">
       <label for="sigY">Y position</label>
-      <input type="number" id="sigY" value="1" min="0" max="1" step="0.01" placeholder="0–1" />
+      <input type="number" id="sigY" value="0.1" min="0" max="1" step="0.01" />
     </div>
     <div class="field">
       <label for="sigPage">Page</label>
-      <input type="number" id="sigPage" value="1" min="1" placeholder="1" />
+      <input type="number" id="sigPage" value="1" min="1" />
     </div>
   </div>
 
   <button class="btn-singpass" id="submitBtn" disabled>
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
       <path d="M10 2L3 5.5v6c0 3.9 3 7.4 7 8.5 4-1.1 7-4.6 7-8.5v-6L10 2z" fill="white" opacity=".8"/>
       <path d="M7.5 10l2 2 3.5-4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     Submit for Signing
   </button>
 
-  <!-- Status panel (shown after submit) -->
-  <div class="status-box" id="statusBox">
-    <div class="status-row">
-      <div class="spinner" id="spinner"></div>
-      <div class="status-text" id="statusText">Uploading document…</div>
-    </div>
-    <div class="status-id" id="statusId"></div>
+  <!-- Debug log — always visible when something happens -->
+  <div class="log-box" id="logBox"></div>
 
-    <!-- Signing link (shown once we have signing_url) -->
-    <div class="sign-link-box" id="signLinkBox">
-      <div class="sign-link-label">Open this link to complete signing:</div>
-      <code class="sign-link-url" id="signLinkUrl"></code>
-      <a class="btn-open-sign" id="signLinkBtn" href="#" target="_blank" rel="noopener">
-        ↗ Open Singpass Signing Portal
-      </a>
+  <!-- Signing link panel -->
+  <div class="sign-panel" id="signPanel">
+    <h3>✅ Document uploaded — open Singpass to sign</h3>
+    <code class="sign-url" id="signUrl"></code>
+    <a class="btn-open" id="signBtn" href="#" target="_blank" rel="noopener">
+      ↗ Open Singpass Signing Portal
+    </a>
+    <div class="poll-status" id="pollStatus">
+      <div class="spinner"></div>
+      <span id="pollText">Waiting for you to complete signing…</span>
     </div>
   </div>
 
-  <!-- Result panel -->
+  <!-- Result -->
   <div class="result-box" id="resultBox">
     <h3 id="resultTitle"></h3>
-    <div id="resultBody"></div>
+    <p id="resultBody"></p>
   </div>
 
-  <p class="small">Staging environment · Sign V3 API</p>
+  <p class="small">Staging environment · Sign V3 API · <a href="/api/jwks" target="_blank" style="color:#94a3b8;">Check JWKS ↗</a></p>
 </div>
 
 <script>
-  const uploadZone = document.getElementById('uploadZone');
-  const pdfInput   = document.getElementById('pdfInput');
-  const fileChosen = document.getElementById('fileChosen');
-  const submitBtn  = document.getElementById('submitBtn');
-  const statusBox  = document.getElementById('statusBox');
-  const statusText = document.getElementById('statusText');
-  const statusId   = document.getElementById('statusId');
-  const spinner    = document.getElementById('spinner');
-  const signLinkBox  = document.getElementById('signLinkBox');
-  const signLinkUrl  = document.getElementById('signLinkUrl');
-  const signLinkBtn  = document.getElementById('signLinkBtn');
-  const resultBox    = document.getElementById('resultBox');
-  const resultTitle  = document.getElementById('resultTitle');
-  const resultBody   = document.getElementById('resultBody');
+  // ── Elements ──────────────────────────────────────────────────────────
+  const uploadZone  = document.getElementById('uploadZone');
+  const pdfInput    = document.getElementById('pdfInput');
+  const fileChosen  = document.getElementById('fileChosen');
+  const submitBtn   = document.getElementById('submitBtn');
+  const logBox      = document.getElementById('logBox');
+  const signPanel   = document.getElementById('signPanel');
+  const signUrl     = document.getElementById('signUrl');
+  const signBtn     = document.getElementById('signBtn');
+  const pollStatus  = document.getElementById('pollStatus');
+  const pollText    = document.getElementById('pollText');
+  const resultBox   = document.getElementById('resultBox');
+  const resultTitle = document.getElementById('resultTitle');
+  const resultBody  = document.getElementById('resultBody');
 
-  // ── File pick / drag-drop ──────────────────────────────────────────────
+  // ── Logging ───────────────────────────────────────────────────────────
+  function log(msg, type = 'info') {
+    logBox.classList.add('visible');
+    const line = document.createElement('div');
+    line.className = `log-line ${type}`;
+    const ts = new Date().toLocaleTimeString();
+    line.textContent = `[${ts}] ${msg}`;
+    logBox.appendChild(line);
+    logBox.scrollTop = logBox.scrollHeight;
+    console.log(`[${type}] ${msg}`);
+  }
+
+  // ── Handle redirect-back from Singpass ────────────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('request_id')) {
+    const banner = document.getElementById('redirectBanner');
+    const status = params.get('status') || 'unknown';
+    document.getElementById('redirectStatus').textContent = status;
+    document.getElementById('redirectReqId').textContent  = params.get('request_id');
+    banner.style.display = 'block';
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    // Auto-poll for result
+    log(`Returned from Singpass. Status param: ${status}`, 'ok');
+    startPolling(params.get('request_id'));
+  }
+
+  // ── File pick ─────────────────────────────────────────────────────────
   pdfInput.addEventListener('change', () => {
     if (pdfInput.files[0]) {
       fileChosen.textContent = `✓ ${pdfInput.files[0].name}`;
       submitBtn.disabled = false;
+      log(`File selected: ${pdfInput.files[0].name} (${(pdfInput.files[0].size/1024).toFixed(1)} KB)`, 'ok');
     }
   });
   uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
@@ -289,97 +256,112 @@
       pdfInput.files = e.dataTransfer.files;
       fileChosen.textContent = `✓ ${file.name}`;
       submitBtn.disabled = false;
+      log(`File dropped: ${file.name}`, 'ok');
+    } else {
+      log('Dropped file is not a PDF', 'error');
     }
   });
 
-  // ── Submit ─────────────────────────────────────────────────────────────
+  // ── Submit ────────────────────────────────────────────────────────────
   submitBtn.addEventListener('click', async () => {
     const file = pdfInput.files[0];
     if (!file) return;
 
     submitBtn.disabled = true;
-    statusBox.classList.add('visible');
     resultBox.className = 'result-box';
-    statusText.textContent = 'Uploading document…';
-    statusId.textContent = '';
-    signLinkBox.classList.remove('visible');
-    spinner.style.display = 'block';
+    signPanel.classList.remove('visible');
+
+    log('Building form data…', 'info');
+
+    const form = new FormData();
+    form.append('pdf', file, file.name);
+    form.append('doc_name', file.name);
+    form.append('x',    document.getElementById('sigX').value);
+    form.append('y',    document.getElementById('sigY').value);
+    form.append('page', document.getElementById('sigPage').value);
+
+    log('POST /api/sign …', 'info');
 
     try {
-      const form = new FormData();
-      form.append('pdf', file, file.name);
-      form.append('doc_name', file.name);
-      form.append('x',    document.getElementById('sigX').value);
-      form.append('y',    document.getElementById('sigY').value);
-      form.append('page', document.getElementById('sigPage').value);
-
       const res = await fetch('/api/sign', { method: 'POST', body: form });
-      const data = await res.json();
+
+      log(`Response: HTTP ${res.status}`, res.ok ? 'ok' : 'error');
+
+      const text = await res.text();
+      log(`Body: ${text.slice(0, 300)}`, res.ok ? 'info' : 'error');
 
       if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-
-      const { sign_request_id, signing_url } = data;
-      statusText.textContent = 'Waiting for signing…';
-      statusId.textContent   = `ID: ${sign_request_id}`;
-      signLinkUrl.textContent = signing_url;
-      signLinkBtn.href        = signing_url;
-      signLinkBox.classList.add('visible');
-
-      // ── Poll for completion ─────────────────────────────────────────
-      await pollStatus(sign_request_id);
-
-    } catch (err) {
-      spinner.style.display = 'none';
-      showResult('error', 'Error', err.message);
-      submitBtn.disabled = false;
-    }
-  });
-
-  // ── Polling ────────────────────────────────────────────────────────────
-  async function pollStatus(signRequestId) {
-    const maxAttempts = 120; // 10 minutes @ 5s intervals
-    let attempt = 0;
-
-    const poll = async () => {
-      attempt++;
-      if (attempt > maxAttempts) {
-        spinner.style.display = 'none';
-        showResult('error', 'Timed out', 'Signing was not completed within 10 minutes.');
+        showResult('error', '❌ API Error', `HTTP ${res.status}: ${text}`);
         submitBtn.disabled = false;
         return;
       }
 
+      const data = JSON.parse(text);
+      const { sign_request_id, signing_url } = data;
+
+      log(`sign_request_id: ${sign_request_id}`, 'ok');
+      log(`signing_url: ${signing_url}`, 'ok');
+
+      if (!signing_url) {
+        showResult('error', '❌ No signing URL', `Response had no signing_url. Full response: ${text}`);
+        submitBtn.disabled = false;
+        return;
+      }
+
+      // Show the signing panel
+      signUrl.textContent = signing_url;
+      signBtn.href = signing_url;
+      signPanel.classList.add('visible');
+      pollText.textContent = 'Waiting for you to complete signing…';
+
+      // Start polling
+      startPolling(sign_request_id);
+
+    } catch (err) {
+      log(`Fetch error: ${err.message}`, 'error');
+      showResult('error', '❌ Network Error', `Could not reach /api/sign. Is the function deployed? Error: ${err.message}`);
+      submitBtn.disabled = false;
+    }
+  });
+
+  // ── Polling ───────────────────────────────────────────────────────────
+  function startPolling(signRequestId) {
+    log(`Starting poll for ${signRequestId}`, 'info');
+    pollStatus.style.display = 'flex';
+    let attempt = 0;
+    const maxAttempts = 120;
+
+    const poll = async () => {
+      attempt++;
+      if (attempt > maxAttempts) {
+        pollText.textContent = 'Timed out waiting for signing.';
+        return;
+      }
       try {
         const res  = await fetch(`/api/status?sign_request_id=${encodeURIComponent(signRequestId)}`);
         const data = await res.json();
+        log(`Poll #${attempt}: status=${data.status}`, 'info');
+        pollText.textContent = `Polling… attempt ${attempt} — status: ${data.status}`;
 
         if (data.status === 'completed') {
-          spinner.style.display = 'none';
-          statusText.textContent = 'Signing completed ✓';
+          pollStatus.style.display = 'none';
           showResult('success', '✅ Document Signed!',
-            `Your document has been successfully signed.<br>` +
-            (data.signed_doc_url
-              ? `<a href="${data.signed_doc_url}" target="_blank" rel="noopener">Download Signed Document ↗</a>`
-              : '')
+            `Successfully signed.${data.signed_doc_url ? ` <a href="${data.signed_doc_url}" target="_blank">Download signed PDF ↗</a>` : ''}`
           );
           submitBtn.disabled = false;
         } else if (data.status === 'expired' || data.status === 'cancelled') {
-          spinner.style.display = 'none';
-          showResult('error', 'Signing ' + data.status, 'The signing request has ' + data.status + '.');
+          pollStatus.style.display = 'none';
+          showResult('error', `❌ Signing ${data.status}`, `The signing request was ${data.status}.`);
           submitBtn.disabled = false;
         } else {
-          // pending — try again
           setTimeout(poll, 5000);
         }
       } catch (err) {
-        // Network error — keep retrying
+        log(`Poll error: ${err.message}`, 'warn');
         setTimeout(poll, 5000);
       }
     };
-
-    setTimeout(poll, 3000); // first check after 3s
+    setTimeout(poll, 4000);
   }
 
   function showResult(type, title, body) {

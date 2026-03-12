@@ -1,10 +1,8 @@
 {
   "version": 2,
-  "routes": [
-    { "src": "/api/sign",               "dest": "/api/sign.js" },
-    { "src": "/api/status",             "dest": "/api/status.js" },
-    { "src": "/api/jwks",               "dest": "/api/jwks.js" },
-    { "src": "/api/webhook/singpass",   "dest": "/api/webhook/singpass.js" },
-    { "src": "/(.*)",                   "dest": "/index.html" }
-  ]
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@3"
+    }
+  }
 }
