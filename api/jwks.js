@@ -8,7 +8,7 @@ module.exports = function handler(req, res) {
       crv: 'P-256',
       use: 'sig',
       alg: 'ES256',
-      kid: 'key-1',
+      kid: 'a90580b7-34e8-4e4d-ab6a-03bd26249c7c',
       x: 'LJnSx3j5HDMdTaKq0zYHLh53gdE9pSgaTp_I_pbQwLU',
       y: 'q9_A0aua5mpvzJwMAMkFhMlBz3llnepZEj6MrvtrDWw',
     }],
