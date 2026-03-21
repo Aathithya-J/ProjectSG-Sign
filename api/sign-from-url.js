@@ -1,5 +1,7 @@
-const crypto = require("crypto");
 const https = require("https");
+const http = require("http");
+const crypto = require("crypto");
+const url = require("url");
 
 function base64UrlEncode(str) {
   return Buffer.from(str)
@@ -66,6 +68,31 @@ function getPdfPageCount(buffer) {
   return 1;
 }
 
+// Download PDF from URL
+function downloadPdf(pdfUrl) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new url.URL(pdfUrl);
+    const protocol = parsedUrl.protocol === "https:" ? https : http;
+
+    const request = protocol.get(pdfUrl, (response) => {
+      if (response.statusCode !== 200) {
+        return reject(new Error(`Failed to download PDF: HTTP ${response.statusCode}`));
+      }
+
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve(Buffer.concat(chunks)));
+      response.on("error", reject);
+    });
+
+    request.on("error", reject);
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error("PDF download timeout"));
+    });
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -85,48 +112,17 @@ module.exports = async (req, res) => {
       chunks.push(chunk);
     }
     const body = Buffer.concat(chunks);
-    const contentType = req.headers["content-type"];
-    const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
-    const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : null;
+    const { pdf_url, filename, signer_nric } = JSON.parse(body.toString());
 
-    if (!boundary) {
-      return res.status(400).json({ error: "Invalid content type: boundary missing" });
+    if (!pdf_url) {
+      return res.status(400).json({ error: "Missing pdf_url in request body" });
     }
 
-    const boundaryBuffer = Buffer.from("--" + boundary);
-    let pdfBuffer = null;
-    let signerNric = null;
-    let fileName = "document.pdf";
-
-    // Robust Buffer-based multipart parsing
-    let pos = 0;
-    while (pos < body.length) {
-      const nextBoundary = body.indexOf(boundaryBuffer, pos);
-      if (nextBoundary === -1) break;
-      
-      const partStart = nextBoundary + boundaryBuffer.length + 2; // skip boundary and \r\n
-      const partEnd = body.indexOf(boundaryBuffer, partStart);
-      if (partEnd === -1) break;
-      
-      const part = body.slice(partStart, partEnd - 2); // remove trailing \r\n
-      const headerEnd = part.indexOf("\r\n\r\n");
-      if (headerEnd !== -1) {
-        const headers = part.slice(0, headerEnd).toString();
-        const content = part.slice(headerEnd + 4);
-        
-        if (headers.includes('name="file"')) {
-          pdfBuffer = content;
-          const filenameMatch = headers.match(/filename="([^"]+)"/);
-          if (filenameMatch) fileName = filenameMatch[1];
-        } else if (headers.includes('name="signer_nric"')) {
-          signerNric = content.toString().trim();
-        }
-      }
-      pos = partEnd;
-    }
+    console.log(`Downloading PDF from: ${pdf_url}`);
+    const pdfBuffer = await downloadPdf(pdf_url);
 
     if (!pdfBuffer || pdfBuffer.length === 0) {
-      return res.status(400).json({ error: "No PDF file provided or file is empty" });
+      return res.status(400).json({ error: "Downloaded PDF is empty" });
     }
 
     const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
@@ -143,7 +139,6 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 100); // Support up to 100 pages
 
     // Create signature locations for each page
-    // Positioning: bottom right area of the page for visibility
     const signLocations = [];
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({
@@ -155,16 +150,18 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
       });
     }
 
+    const docName = filename || "document.pdf";
+
     const jwtPayload = {
       client_id: clientId,
-      doc_name: fileName,
+      doc_name: docName,
       sign_locations: signLocations
     };
 
-    if (signerNric) {
+    if (signer_nric) {
       jwtPayload.signer_uin_hash = crypto
         .createHash("sha256")
-        .update(signerNric.toUpperCase())
+        .update(signer_nric.toUpperCase())
         .digest("hex");
     }
 
@@ -179,49 +176,56 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
       },
     };
 
-    const apiReq = https.request(apiUrl, options, (apiRes) => {
-      let data = "";
-      apiRes.on("data", (chunk) => (data += chunk));
-      apiRes.on("end", () => {
-        try {
-          if (
-            apiRes.headers["content-type"] &&
-            apiRes.headers["content-type"].includes("application/json")
-          ) {
+    return new Promise(() => {
+      const request = https.request(apiUrl, options, (response) => {
+        let data = "";
+        response.on("data", (chunk) => (data += chunk));
+        response.on("end", () => {
+          try {
             const result = JSON.parse(data);
-            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+            if (response.statusCode === 200 || response.statusCode === 201) {
+              console.log("Sign request successful:", result);
               res.status(200).json({
-                sign_request_id: result.request_id,
-                signing_url: result.signing_url,
+                success: true,
+                redirect_url: result.redirect_url,
+                request_id: result.request_id,
                 exchange_code: result.exchange_code,
               });
             } else {
-              res.status(apiRes.statusCode).json(result);
+              console.error("Singpass API error:", result);
+              res.status(response.statusCode || 500).json({
+                success: false,
+                error: result.error || "Failed to create sign request",
+                details: result,
+              });
             }
-          } else {
-            res
-              .status(apiRes.statusCode)
-              .json({ error: "API returned non-JSON response", raw: data });
+          } catch (e) {
+            console.error("Error parsing response:", e);
+            res.status(500).json({
+              success: false,
+              error: "Failed to parse Singpass response",
+            });
           }
-        } catch (e) {
-          res.status(500).json({ error: "Failed to parse API response", raw: data });
-        }
+        });
       });
-    });
 
-    apiReq.on("error", (e) => {
-      res.status(500).json({ error: e.message });
-    });
+      request.on("error", (error) => {
+        console.error("Request error:", error);
+        res.status(500).json({
+          success: false,
+          error: "Failed to communicate with Singpass API",
+          details: error.message,
+        });
+      });
 
-    apiReq.write(pdfBuffer);
-    apiReq.end();
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+      request.write(pdfBuffer);
+      request.end();
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Internal server error",
+    });
   }
-};
-
-module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
 };
