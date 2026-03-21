@@ -142,17 +142,39 @@
             message.textContent = 'Your document is ready to download.';
             buttonGroup.style.display = 'flex';
 
-            downloadBtn.onclick = () => {
-                const link = document.createElement('a');
-                link.href = signedDocUrl;
-                const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
-                const signedName = originalName.toLowerCase().endsWith('.pdf') 
-                    ? originalName.replace(/\.pdf$/i, '_signed.pdf')
-                    : originalName + '_signed.pdf';
-                link.download = signedName;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            downloadBtn.onclick = async () => {
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = 'Downloading...';
+                try {
+                    // Fetch the PDF as a blob to ensure proper filename and extension
+                    const response = await fetch(signedDocUrl);
+                    if (!response.ok) throw new Error('Failed to download document');
+                    const blob = await response.blob();
+                    
+                    // Create a blob URL and trigger download
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    
+                    const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
+                    const signedName = originalName.toLowerCase().endsWith('.pdf') 
+                        ? originalName.replace(/\.pdf$/i, '_signed.pdf')
+                        : originalName + '_signed.pdf';
+                    link.download = signedName;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+                    
+                    downloadBtn.textContent = 'Download Signed PDF';
+                    downloadBtn.disabled = false;
+                } catch (err) {
+                    statusDiv.className = 'error';
+                    statusDiv.textContent = 'Download failed: ' + err.message;
+                    statusDiv.style.display = 'block';
+                    downloadBtn.textContent = 'Download Signed PDF';
+                    downloadBtn.disabled = false;
+                }
             };
 
             continueBtn.onclick = () => {

@@ -234,19 +234,39 @@
                         localStorage.removeItem('last_exchange_code');
                         localStorage.removeItem('last_request_id');
 
-                        downloadBtn.onclick = () => {
-                            const link = document.createElement('a');
-                            link.href = result.signed_doc_url;
-                            const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
-                            const signedName = originalName.toLowerCase().endsWith('.pdf') 
-                                ? originalName.replace(/\.pdf$/i, '_signed.pdf')
-                                : originalName + '_signed.pdf';
-                            link.download = signedName;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            // Clean up filename after download
-                            localStorage.removeItem('last_filename');
+                        downloadBtn.onclick = async () => {
+                            downloadBtn.disabled = true;
+                            const originalText = downloadBtn.textContent;
+                            downloadBtn.textContent = 'Downloading...';
+                            try {
+                                const response = await fetch(result.signed_doc_url);
+                                if (!response.ok) throw new Error('Failed to download document');
+                                const blob = await response.blob();
+                                
+                                const blobUrl = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = blobUrl;
+                                
+                                const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
+                                const signedName = originalName.toLowerCase().endsWith('.pdf') 
+                                    ? originalName.replace(/\.pdf$/i, '_signed.pdf')
+                                    : originalName + '_signed.pdf';
+                                link.download = signedName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(blobUrl);
+                                
+                                localStorage.removeItem('last_filename');
+                                downloadBtn.textContent = originalText;
+                                downloadBtn.disabled = false;
+                            } catch (err) {
+                                statusDiv.className = 'error';
+                                statusDiv.textContent = 'Download failed: ' + err.message;
+                                statusDiv.style.display = 'block';
+                                downloadBtn.textContent = originalText;
+                                downloadBtn.disabled = false;
+                            }
                         };
                     } else if (result.status !== 'pending') {
                         clearInterval(interval);
