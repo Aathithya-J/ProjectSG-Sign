@@ -68,6 +68,7 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
   const jwt = createJWT(
     {
+      client_id: clientId,
       exchange_code: exchange_code
     },
     privateKey,

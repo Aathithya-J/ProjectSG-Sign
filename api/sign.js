@@ -101,6 +101,7 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
     const jwtPayload = {
+      client_id: clientId,
       doc_name: fileName,
       sign_locations: [{ page: 1, x: 0.72, y: 0.05 }]
     };
