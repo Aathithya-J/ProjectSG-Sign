@@ -47,11 +47,12 @@
     <script>
         // Singpass redirects with request_id and status=success
         const urlParams = new URLSearchParams(window.location.search);
-        const requestId = urlParams.get('request_id') || urlParams.get('sign_request_id');
-        
-        // Recover the exchange_code from sessionStorage if it exists
-        const exchangeCode = sessionStorage.getItem('last_exchange_code');
-        
+        const requestId = urlParams.get('request_id') || urlParams.get('sign_request_id')
+                          || localStorage.getItem('last_request_id');
+
+        // Recover the exchange_code from localStorage (persists across external redirects)
+        const exchangeCode = localStorage.getItem('last_exchange_code');
+
         let targetUrl = '/';
         if (requestId) {
             targetUrl += `?request_id=${requestId}`;
@@ -59,7 +60,7 @@
                 targetUrl += `&exchange_code=${exchangeCode}`;
             }
         }
-        
+
         // Short delay to show the success message before redirecting
         setTimeout(() => {
             window.location.href = targetUrl;

@@ -117,9 +117,11 @@
         // Check for redirect back from Singpass
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const requestId = urlParams.get('request_id');
-            const exchangeCode = urlParams.get('exchange_code') || sessionStorage.getItem('last_exchange_code');
-            
+            // request_id may come from the URL (passed by signed.html) or from localStorage as a fallback
+            const requestId = urlParams.get('request_id') || localStorage.getItem('last_request_id');
+            // exchange_code may come from the URL or from localStorage (persists across external redirects)
+            const exchangeCode = urlParams.get('exchange_code') || localStorage.getItem('last_exchange_code');
+
             if (requestId && exchangeCode) {
                 statusDiv.className = 'info';
                 statusDiv.innerHTML = '<div class="loader"></div> Resuming session, checking status...';
@@ -193,9 +195,10 @@
                     resultLink.href = result.signing_url;
                     resultLink.style.display = 'block';
                     
-                    // Store exchange_code and filename for recovery
-                    sessionStorage.setItem('last_exchange_code', result.exchange_code);
-                    sessionStorage.setItem('last_filename', selectedFile.name);
+                    // Use localStorage so data persists after navigating to the Singpass portal and back
+                    localStorage.setItem('last_exchange_code', result.exchange_code);
+                    localStorage.setItem('last_request_id', result.sign_request_id);
+                    localStorage.setItem('last_filename', selectedFile.name);
                     
                     pollStatus(result.sign_request_id, result.exchange_code);
                 } else {
@@ -226,11 +229,15 @@
                         statusDiv.textContent = 'Document signed successfully!';
                         resultLink.style.display = 'none';
                         downloadBtn.style.display = 'block';
-                        
+
+                        // Clean up localStorage after a successful signing session
+                        localStorage.removeItem('last_exchange_code');
+                        localStorage.removeItem('last_request_id');
+
                         downloadBtn.onclick = () => {
                             const link = document.createElement('a');
                             link.href = result.signed_doc_url;
-                            const originalName = sessionStorage.getItem('last_filename') || 'signed_document.pdf';
+                            const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
                             const signedName = originalName.toLowerCase().endsWith('.pdf') 
                                 ? originalName.replace(/\.pdf$/i, '_signed.pdf')
                                 : originalName + '_signed.pdf';
@@ -238,6 +245,8 @@
                             document.body.appendChild(link);
                             link.click();
                             document.body.removeChild(link);
+                            // Clean up filename after download
+                            localStorage.removeItem('last_filename');
                         };
                     } else if (result.status !== 'pending') {
                         clearInterval(interval);
