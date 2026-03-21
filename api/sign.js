@@ -42,14 +42,32 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-// Helper to detect page count from PDF binary
+// Improved robust page count detection
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
-  const match = str.match(/\/Count\s+(\d+)/);
-  if (match) {
-    return parseInt(match[1], 10);
+  
+  // Method 1: Search for /Count in Catalog/Pages
+  const countMatch = str.match(/\/Count\s+(\d+)/);
+  if (countMatch) {
+    const count = parseInt(countMatch[1], 10);
+    if (!isNaN(count) && count > 0) return count;
   }
-  return 1; // Default to 1 if not found
+  
+  // Method 2: Count /Type /Page entries (more reliable for some PDFs)
+  const pageMatches = str.match(/\/Type\s*\/Page\b/g);
+  if (pageMatches) {
+    return pageMatches.length;
+  }
+  
+  // Method 3: Simple search for /Page\b
+  const simplePageMatches = str.match(/\/Page\b/g);
+  if (simplePageMatches) {
+    // Subtract 1 if /Pages is also found to avoid double counting the parent
+    const hasPages = str.includes("/Pages");
+    return hasPages ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
+  }
+
+  return 1; // Absolute fallback
 }
 
 module.exports = async (req, res) => {
@@ -96,8 +114,8 @@ module.exports = async (req, res) => {
       }
     }
 
-    if (!pdfBuffer) {
-      return res.status(400).json({ error: "No PDF file provided" });
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      return res.status(400).json({ error: "No PDF file provided or file is empty" });
     }
 
     const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
@@ -110,8 +128,9 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
-    // Detect page count or default to 20 as per user's initial request (Singpass limit is 20)
+    // Improved page count detection
     const detectedPageCount = getPdfPageCount(pdfBuffer);
+    // Singpass V3 allows up to 20 signatures per document
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 20);
 
     const signLocations = [];
