@@ -23,15 +23,14 @@ function createJWT(payload, privateKey, kid, aud) {
     exp: iat + 120, // Valid for 2 minutes
     jti: crypto.randomUUID(),
     aud: aud,
-    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Issuer is the Client ID
-    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Subject is also the Client ID
+    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
+    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
-  // For ES256, we use ECDSA with SHA-256
   const signer = crypto.createSign("SHA256");
   signer.update(signatureInput);
   const signature = signer
@@ -69,8 +68,7 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
   const jwt = createJWT(
     {
-      exchange_code: exchange_code,
-      client_id: clientId,
+      exchange_code: exchange_code
     },
     privateKey,
     kid,

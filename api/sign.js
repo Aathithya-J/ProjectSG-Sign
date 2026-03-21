@@ -23,15 +23,14 @@ function createJWT(payload, privateKey, kid, aud) {
     exp: iat + 120, // Valid for 2 minutes
     jti: crypto.randomUUID(),
     aud: aud,
-    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Issuer is the Client ID
-    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Subject is also the Client ID
+    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
+    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
   const signatureInput = `${encodedHeader}.${encodedPayload}`;
 
-  // For ES256, we use ECDSA with SHA-256
   const signer = crypto.createSign("SHA256");
   signer.update(signatureInput);
   const signature = signer
@@ -101,19 +100,9 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
-    const signLocations = [];
-    for (let i = 1; i <= 1; i++) {
-      signLocations.push({
-        page: i,
-        x: 0.72,
-        y: 0.05,
-      });
-    }
-
     const jwtPayload = {
-      client_id: clientId,
       doc_name: fileName,
-      sign_locations: signLocations,
+      sign_locations: [{ page: 1, x: 0.72, y: 0.05 }]
     };
 
     if (signerNric) {
