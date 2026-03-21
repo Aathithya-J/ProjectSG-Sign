@@ -42,6 +42,16 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
+// Helper to detect page count from PDF binary
+function getPdfPageCount(buffer) {
+  const str = buffer.toString("binary");
+  const match = str.match(/\/Count\s+(\d+)/);
+  if (match) {
+    return parseInt(match[1], 10);
+  }
+  return 1; // Default to 1 if not found
+}
+
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -100,18 +110,25 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
+    // Detect page count or default to 20 as per user's initial request (Singpass limit is 20)
+    const detectedPageCount = getPdfPageCount(pdfBuffer);
+    const pageCount = Math.min(Math.max(detectedPageCount, 1), 20);
+
+    const signLocations = [];
+    for (let i = 1; i <= pageCount; i++) {
+      signLocations.push({
+        page: i,
+        x: 0.72,
+        y: 0.05,
+        width: 0.25,
+        height: 0.06
+      });
+    }
+
     const jwtPayload = {
       client_id: clientId,
       doc_name: fileName,
-      sign_locations: [
-        {
-          page: 1,
-          x: 0.1,
-          y: 0.1,
-          width: 0.25,
-          height: 0.06
-        }
-      ]
+      sign_locations: signLocations
     };
 
     if (signerNric) {
