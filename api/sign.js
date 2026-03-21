@@ -23,8 +23,8 @@ function createJWT(payload, privateKey, kid, aud) {
     exp: iat + 120, // Valid for 2 minutes
     jti: crypto.randomUUID(),
     aud: aud,
-    iss: payload.client_id, // Issuer is the Client ID
-    sub: payload.client_id, // Subject is also the Client ID
+    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Issuer is the Client ID
+    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Subject is also the Client ID
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -74,13 +74,13 @@ module.exports = async (req, res) => {
     let fileName = "document.pdf";
 
     for (const part of parts) {
-      if (part.includes('name="file"')) {
+      if (part.includes("name=\"file\"")) {
         const headerEnd = part.indexOf("\r\n\r\n");
         const content = part.substring(headerEnd + 4, part.lastIndexOf("\r\n"));
         pdfBuffer = Buffer.from(content, "binary");
         const filenameMatch = part.match(/filename="([^"]+)"/);
         if (filenameMatch) fileName = filenameMatch[1];
-      } else if (part.includes('name="signer_nric"')) {
+      } else if (part.includes("name=\"signer_nric\"")) {
         const headerEnd = part.indexOf("\r\n\r\n");
         signerNric = part.substring(headerEnd + 4, part.lastIndexOf("\r\n")).trim();
       }
@@ -92,7 +92,12 @@ module.exports = async (req, res) => {
 
     const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
     const kid = "key-1";
-    const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
+    // IMPORTANT: Replace this placeholder with your actual RSA private key in PEM format.
+    // This key must correspond to the public key exposed in api/jwks.js.
+    const privateKey = `-----BEGIN RSA PRIVATE KEY-----
+YOUR_RSA_PRIVATE_KEY_HERE
+-----END RSA PRIVATE KEY-----`;
+
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
     const signLocations = [];

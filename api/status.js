@@ -58,7 +58,12 @@ module.exports = async (req, res) => {
 
   const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
   const kid = "key-1";
-  const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
+  // IMPORTANT: Replace this placeholder with your actual RSA private key in PEM format.
+  // This key must correspond to the public key exposed in api/jwks.js.
+  const privateKey = `-----BEGIN RSA PRIVATE KEY-----
+YOUR_RSA_PRIVATE_KEY_HERE
+-----END RSA PRIVATE KEY-----`;
+
   const apiUrl = `https://staging.sign.singpass.gov.sg/api/v3/sign-requests/${id}/signed-doc`;
 
   const jwt = createJWT(
