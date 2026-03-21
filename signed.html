@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Signed Successfully</title>
+    <title>Document Signing Result</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
             background-color: #f4f7f6;
             padding: 20px;
         }
@@ -34,8 +38,55 @@
             margin: 0 auto 1.5rem;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { color: #2e7d32; margin-bottom: 1rem; margin-top: 0; }
-        p { color: #666; line-height: 1.5; margin: 1rem 0; }
+        
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .icon.success { color: #2e7d32; }
+        .icon.error { color: #d71920; }
+        .icon.cancelled { color: #f57c00; }
+        .icon.expired { color: #6f42c1; }
+        
+        h2 { 
+            color: #333; 
+            margin-bottom: 1rem; 
+            margin-top: 0;
+            font-size: 1.8rem;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+        p { 
+            color: #666; 
+            line-height: 1.6; 
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+        .instructions {
+            background: #f5f5f5;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            text-align: left;
+            border-left: 4px solid #d71920;
+        }
+        .instructions h4 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .instructions ol {
+            margin-left: 1.5rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        .instructions li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
         .button-group {
             display: flex;
             gap: 1rem;
@@ -50,7 +101,7 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s;
             flex: 1;
             min-width: 150px;
         }
@@ -65,34 +116,163 @@
             background-color: #ccc;
             cursor: not-allowed;
         }
-        #continue-btn {
+        #retry-btn {
             background-color: #d71920;
             color: white;
         }
-        #continue-btn:hover {
+        #retry-btn:hover {
             background-color: #b3151a;
+        }
+        #back-btn {
+            background-color: #666;
+            color: white;
+        }
+        #back-btn:hover {
+            background-color: #444;
         }
         #status {
             margin-top: 1.5rem;
             padding: 1rem;
             border-radius: 6px;
             display: none;
+            border-left: 4px solid;
         }
-        .info { background: #e3f2fd; color: #0d47a1; }
-        .error { background: #ffebee; color: #b71c1c; }
-        .success { background: #e8f5e9; color: #1b5e20; }
+        .info { 
+            background: #e3f2fd; 
+            color: #0d47a1;
+            border-left-color: #0d47a1;
+        }
+        .error { 
+            background: #ffebee; 
+            color: #b71c1c;
+            border-left-color: #b71c1c;
+        }
+        .success { 
+            background: #e8f5e9; 
+            color: #1b5e20;
+            border-left-color: #1b5e20;
+        }
+        .warning {
+            background: #fff3e0;
+            color: #e65100;
+            border-left-color: #e65100;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s;
+        }
+        @keyframes slideIn { 
+            from { 
+                transform: translateY(-50px);
+                opacity: 0;
+            } 
+            to { 
+                transform: translateY(0);
+                opacity: 1;
+            } 
+        }
+        
+        .modal-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .modal-message {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .modal-buttons button {
+            min-width: 120px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="loader" id="loader"></div>
-        <h2 id="title">Signing Successful!</h2>
-        <p id="message">Your document has been signed via Singpass. Preparing your download...</p>
+        <div class="icon" id="icon" style="display: none;"></div>
+        <h2 id="title">Processing...</h2>
+        <p class="subtitle" id="subtitle">Please wait while we verify your signing request...</p>
         
         <div id="status"></div>
+        <div id="instructions-container"></div>
         
         <div class="button-group" id="button-group" style="display: none;">
-            <button id="download-btn">Download Signed PDF</button>
+            <button id="download-btn" style="display: none;">Download Signed PDF</button>
+            <button id="retry-btn" style="display: none;">Try Again</button>
+            <button id="back-btn" style="display: none;">Back to Upload</button>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon error">⚠️</div>
+            <div class="modal-title" id="errorModalTitle">Signing Failed</div>
+            <div class="modal-message" id="errorModalMessage">An error occurred during the signing process.</div>
+            <div class="modal-buttons">
+                <button id="errorModalRetry" class="modal-btn">Try Again</button>
+                <button id="errorModalBack" class="modal-btn" style="background-color: #666; color: white;">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancelled Modal -->
+    <div id="cancelledModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon cancelled">⊘</div>
+            <div class="modal-title">Signing Cancelled</div>
+            <div class="modal-message">You cancelled the signing process. Your document was not signed.</div>
+            <div class="modal-buttons">
+                <button id="cancelledRetry" class="modal-btn" style="background-color: #d71920; color: white;">Sign Again</button>
+                <button id="cancelledBack" class="modal-btn" style="background-color: #666; color: white;">Back to Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expired Session Modal -->
+    <div id="expiredModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon expired">⏱️</div>
+            <div class="modal-title">Session Expired</div>
+            <div class="modal-message">Your signing session has expired. Please start the signing process again.</div>
+            <div class="modal-buttons">
+                <button id="expiredRetry" class="modal-btn" style="background-color: #d71920; color: white;">Start Over</button>
+                <button id="expiredBack" class="modal-btn" style="background-color: #666; color: white;">Back to Upload</button>
+            </div>
         </div>
     </div>
 
@@ -103,17 +283,47 @@
         const exchangeCode = localStorage.getItem('last_exchange_code');
         const statusDiv = document.getElementById('status');
         const loader = document.getElementById('loader');
+        const icon = document.getElementById('icon');
         const buttonGroup = document.getElementById('button-group');
         const downloadBtn = document.getElementById('download-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const backBtn = document.getElementById('back-btn');
         const title = document.getElementById('title');
-        const message = document.getElementById('message');
+        const subtitle = document.getElementById('subtitle');
+        const instructionsContainer = document.getElementById('instructions-container');
+
+        // Modal elements
+        const errorModal = document.getElementById('errorModal');
+        const cancelledModal = document.getElementById('cancelledModal');
+        const expiredModal = document.getElementById('expiredModal');
 
         let signedDocUrl = null;
 
+        // Check for error status in URL
+        function checkErrorStatus() {
+            const status = urlParams.get('status');
+            const error = urlParams.get('error');
+
+            if (status === 'cancelled') {
+                showCancelledModal();
+                return true;
+            }
+            if (status === 'failed' || error) {
+                const errorMsg = error || 'Signing process failed. Please try again.';
+                showErrorModal('Signing Failed', errorMsg);
+                return true;
+            }
+            return false;
+        }
+
         // Fetch the signed document URL from the status API
         async function fetchSignedDocument() {
+            if (checkErrorStatus()) {
+                return;
+            }
+
             if (!requestId || !exchangeCode) {
-                showError('Missing request ID or exchange code. Please go back and try again.');
+                showErrorModal('Missing Information', 'Missing request ID or exchange code. Please go back and try again.');
                 return;
             }
 
@@ -125,29 +335,36 @@
                     signedDocUrl = result.signed_doc_url;
                     showDownloadUI();
                 } else if (result.status === 'pending') {
-                    showError('Document is still being processed. Please wait a moment and refresh.');
+                    showErrorModal('Still Processing', 'Document is still being processed. Please wait a moment and refresh.');
+                } else if (result.status === 'cancelled') {
+                    showCancelledModal();
+                } else if (result.status === 'expired') {
+                    showExpiredModal();
                 } else {
-                    showError('Failed to retrieve signed document: ' + (result.error || 'Unknown error'));
+                    const errorMsg = result.error || 'Unknown error occurred';
+                    showErrorModal('Signing Failed', 'Failed to retrieve signed document: ' + errorMsg);
                 }
             } catch (err) {
-                showError('Error fetching signed document: ' + err.message);
+                showErrorModal('Connection Error', 'Error fetching signed document: ' + err.message);
             }
         }
 
         function showDownloadUI() {
             loader.style.display = 'none';
+            icon.style.display = 'block';
+            icon.textContent = '✓';
+            icon.className = 'icon success';
             title.textContent = 'Document Signed Successfully!';
-            message.textContent = 'Your document is ready to download.';
+            subtitle.textContent = 'Your document has been signed via Singpass.';
             buttonGroup.style.display = 'flex';
+            downloadBtn.style.display = 'block';
 
             downloadBtn.onclick = async () => {
                 downloadBtn.disabled = true;
                 downloadBtn.textContent = 'Downloading...';
                 try {
-                    // Use the backend proxy to fetch the PDF and bypass CORS
                     const response = await fetch(`/api/download?id=${requestId}&exchange_code=${exchangeCode}`);
                     
-                    // Check if response is JSON (error response)
                     const contentType = response.headers.get('content-type') || '';
                     if (contentType.includes('application/json')) {
                         const errorData = await response.json();
@@ -158,19 +375,16 @@
                         throw new Error(errorMsg);
                     }
                     
-                    // Check if response is successful
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}: Failed to download document`);
                     }
                     
-                    // Check if we got a PDF
                     if (!contentType.includes('application/pdf')) {
                         throw new Error('Invalid response: Expected PDF file');
                     }
                     
                     const blob = await response.blob();
                     
-                    // Verify blob is not empty and looks like a PDF
                     if (blob.size === 0) {
                         throw new Error('Downloaded file is empty');
                     }
@@ -178,7 +392,6 @@
                         throw new Error('Downloaded file is not a valid PDF');
                     }
                     
-                    // Create a blob URL and trigger download
                     const blobUrl = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = blobUrl;
@@ -193,7 +406,6 @@
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(blobUrl);
                     
-                    // Clean up localStorage after successful download
                     localStorage.removeItem('last_exchange_code');
                     localStorage.removeItem('last_request_id');
                     localStorage.removeItem('last_filename');
@@ -208,17 +420,99 @@
                     downloadBtn.disabled = false;
                 }
             };
-
-
         }
 
-        function showError(errorMsg) {
+        function showErrorModal(errorTitle, errorMsg) {
             loader.style.display = 'none';
-            title.textContent = 'Error';
-            message.style.display = 'none';
+            icon.style.display = 'block';
+            icon.textContent = '✕';
+            icon.className = 'icon error';
+            title.textContent = errorTitle;
+            subtitle.textContent = '';
+            
             statusDiv.className = 'error';
             statusDiv.textContent = errorMsg;
             statusDiv.style.display = 'block';
+            
+            buttonGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            backBtn.style.display = 'block';
+
+            retryBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+
+            backBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+        }
+
+        function showCancelledModal() {
+            loader.style.display = 'none';
+            icon.style.display = 'block';
+            icon.textContent = '⊘';
+            icon.className = 'icon cancelled';
+            title.textContent = 'Signing Cancelled';
+            subtitle.textContent = 'You cancelled the signing process.';
+            
+            statusDiv.className = 'warning';
+            statusDiv.textContent = 'Your document was not signed. You can try again anytime.';
+            statusDiv.style.display = 'block';
+            
+            buttonGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            backBtn.style.display = 'block';
+
+            retryBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+
+            backBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+        }
+
+        function showExpiredModal() {
+            loader.style.display = 'none';
+            icon.style.display = 'block';
+            icon.textContent = '⏱️';
+            icon.className = 'icon expired';
+            title.textContent = 'Session Expired';
+            subtitle.textContent = 'Your signing session has expired.';
+            
+            statusDiv.className = 'warning';
+            statusDiv.textContent = 'Your signing session has expired. Please start the process again.';
+            statusDiv.style.display = 'block';
+            
+            buttonGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            backBtn.style.display = 'block';
+
+            retryBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+
+            backBtn.onclick = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
         }
 
         // Fetch signed document when page loads
