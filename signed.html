@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redirecting...</title>
+    <title>Document Signed Successfully</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -13,6 +13,7 @@
             min-height: 100vh;
             margin: 0;
             background-color: #f4f7f6;
+            padding: 20px;
         }
         .container {
             text-align: center;
@@ -21,7 +22,7 @@
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
         }
         .loader {
             border: 4px solid #f3f3f3;
@@ -33,38 +34,158 @@
             margin: 0 auto 1.5rem;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        h2 { color: #2e7d32; margin-bottom: 1rem; }
-        p { color: #666; line-height: 1.5; }
+        h2 { color: #2e7d32; margin-bottom: 1rem; margin-top: 0; }
+        p { color: #666; line-height: 1.5; margin: 1rem 0; }
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            flex: 1;
+            min-width: 150px;
+        }
+        #download-btn {
+            background-color: #2e7d32;
+            color: white;
+        }
+        #download-btn:hover {
+            background-color: #1b5e20;
+        }
+        #download-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #continue-btn {
+            background-color: #d71920;
+            color: white;
+        }
+        #continue-btn:hover {
+            background-color: #b3151a;
+        }
+        #status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 6px;
+            display: none;
+        }
+        .info { background: #e3f2fd; color: #0d47a1; }
+        .error { background: #ffebee; color: #b71c1c; }
+        .success { background: #e8f5e9; color: #1b5e20; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="loader"></div>
-        <h2>Signing Successful!</h2>
-        <p>Your document has been signed via Singpass. Redirecting you back to download your document...</p>
+        <div class="loader" id="loader"></div>
+        <h2 id="title">Signing Successful!</h2>
+        <p id="message">Your document has been signed via Singpass. Preparing your download...</p>
+        
+        <div id="status"></div>
+        
+        <div class="button-group" id="button-group" style="display: none;">
+            <button id="download-btn">Download Signed PDF</button>
+            <button id="continue-btn">Continue</button>
+        </div>
     </div>
 
     <script>
-        // Singpass redirects with request_id and status=success
         const urlParams = new URLSearchParams(window.location.search);
         const requestId = urlParams.get('request_id') || urlParams.get('sign_request_id')
                           || localStorage.getItem('last_request_id');
-
-        // Recover the exchange_code from localStorage (persists across external redirects)
         const exchangeCode = localStorage.getItem('last_exchange_code');
+        const statusDiv = document.getElementById('status');
+        const loader = document.getElementById('loader');
+        const buttonGroup = document.getElementById('button-group');
+        const downloadBtn = document.getElementById('download-btn');
+        const continueBtn = document.getElementById('continue-btn');
+        const title = document.getElementById('title');
+        const message = document.getElementById('message');
 
-        let targetUrl = '/';
-        if (requestId) {
-            targetUrl += `?request_id=${requestId}`;
-            if (exchangeCode) {
-                targetUrl += `&exchange_code=${exchangeCode}`;
+        let signedDocUrl = null;
+
+        // Fetch the signed document URL from the status API
+        async function fetchSignedDocument() {
+            if (!requestId || !exchangeCode) {
+                showError('Missing request ID or exchange code. Please go back and try again.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/status?id=${requestId}&exchange_code=${exchangeCode}`);
+                const result = await response.json();
+
+                if (result.status === 'signed' && result.signed_doc_url) {
+                    signedDocUrl = result.signed_doc_url;
+                    showDownloadUI();
+                } else if (result.status === 'pending') {
+                    showError('Document is still being processed. Please wait a moment and refresh.');
+                } else {
+                    showError('Failed to retrieve signed document: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                showError('Error fetching signed document: ' + err.message);
             }
         }
 
-        // Short delay to show the success message before redirecting
-        setTimeout(() => {
-            window.location.href = targetUrl;
-        }, 1500);
+        function showDownloadUI() {
+            loader.style.display = 'none';
+            title.textContent = 'Document Signed Successfully!';
+            message.textContent = 'Your document is ready to download.';
+            buttonGroup.style.display = 'flex';
+
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.href = signedDocUrl;
+                const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
+                const signedName = originalName.toLowerCase().endsWith('.pdf') 
+                    ? originalName.replace(/\.pdf$/i, '_signed.pdf')
+                    : originalName + '_signed.pdf';
+                link.download = signedName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            continueBtn.onclick = () => {
+                // Clean up localStorage
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                // Redirect back to main page
+                window.location.href = '/';
+            };
+        }
+
+        function showError(errorMsg) {
+            loader.style.display = 'none';
+            title.textContent = 'Error';
+            message.style.display = 'none';
+            statusDiv.className = 'error';
+            statusDiv.textContent = errorMsg;
+            statusDiv.style.display = 'block';
+            
+            continueBtn.textContent = 'Go Back';
+            buttonGroup.style.display = 'flex';
+            downloadBtn.style.display = 'none';
+            
+            continueBtn.onclick = () => {
+                window.location.href = '/';
+            };
+        }
+
+        // Fetch signed document when page loads
+        window.onload = () => {
+            fetchSignedDocument();
+        };
     </script>
 </body>
 </html>
