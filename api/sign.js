@@ -86,28 +86,43 @@ module.exports = async (req, res) => {
     }
     const body = Buffer.concat(chunks);
     const contentType = req.headers["content-type"];
-    const boundary = contentType.split("boundary=")[1];
+    const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
+    const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : null;
 
     if (!boundary) {
-      return res.status(400).json({ error: "Invalid content type" });
+      return res.status(400).json({ error: "Invalid content type: boundary missing" });
     }
 
-    const parts = body.toString("binary").split("--" + boundary);
+    const boundaryBuffer = Buffer.from("--" + boundary);
     let pdfBuffer = null;
     let signerNric = null;
     let fileName = "document.pdf";
 
-    for (const part of parts) {
-      if (part.includes('name="file"')) {
-        const headerEnd = part.indexOf("\r\n\r\n");
-        const content = part.substring(headerEnd + 4, part.lastIndexOf("\r\n"));
-        pdfBuffer = Buffer.from(content, "binary");
-        const filenameMatch = part.match(/filename="([^"]+)"/);
-        if (filenameMatch) fileName = filenameMatch[1];
-      } else if (part.includes('name="signer_nric"')) {
-        const headerEnd = part.indexOf("\r\n\r\n");
-        signerNric = part.substring(headerEnd + 4, part.lastIndexOf("\r\n")).trim();
+    // Robust Buffer-based multipart parsing
+    let pos = 0;
+    while (pos < body.length) {
+      const nextBoundary = body.indexOf(boundaryBuffer, pos);
+      if (nextBoundary === -1) break;
+      
+      const partStart = nextBoundary + boundaryBuffer.length + 2; // skip boundary and \r\n
+      const partEnd = body.indexOf(boundaryBuffer, partStart);
+      if (partEnd === -1) break;
+      
+      const part = body.slice(partStart, partEnd - 2); // remove trailing \r\n
+      const headerEnd = part.indexOf("\r\n\r\n");
+      if (headerEnd !== -1) {
+        const headers = part.slice(0, headerEnd).toString();
+        const content = part.slice(headerEnd + 4);
+        
+        if (headers.includes('name="file"')) {
+          pdfBuffer = content;
+          const filenameMatch = headers.match(/filename="([^"]+)"/);
+          if (filenameMatch) fileName = filenameMatch[1];
+        } else if (headers.includes('name="signer_nric"')) {
+          signerNric = content.toString().trim();
+        }
       }
+      pos = partEnd;
     }
 
     if (!pdfBuffer || pdfBuffer.length === 0) {

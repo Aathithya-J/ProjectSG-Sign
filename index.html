@@ -5,80 +5,114 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Singpass PDF Signer</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f7f9; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .container { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; text-align: center; }
-        h1 { margin-bottom: 30px; font-size: 24px; color: #d32f2f; }
-        #drop-zone { border: 2px dashed #ccc; border-radius: 8px; padding: 40px 20px; cursor: pointer; transition: border-color 0.3s; margin-bottom: 20px; background-color: #fafafa; }
-        #drop-zone.dragover { border-color: #d32f2f; background-color: #fff5f5; }
-        #file-info { margin-top: 10px; font-size: 14px; color: #666; }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
-        input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #d32f2f; color: #fff; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; width: 100%; transition: background-color 0.3s; }
-        button:hover { background-color: #b71c1c; }
+        :root {
+            --primary: #d71920;
+            --primary-hover: #b3151a;
+            --bg: #f4f7f6;
+            --text: #333;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+        h1 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
+        .drop-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            cursor: pointer;
+            transition: border-color 0.3s;
+            background-color: #fafafa;
+        }
+        .drop-zone.hover { border-color: var(--primary); background: #fff5f5; }
+        .input-group { margin-bottom: 1rem; text-align: left; }
+        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; }
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: var(--primary-hover); }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #status-container { margin-top: 30px; padding: 20px; border-top: 1px solid #eee; display: none; }
-        .signing-link { display: block; margin: 15px 0; color: #1976d2; text-decoration: none; font-weight: 600; overflow-wrap: break-word; }
-        .signing-link:hover { text-decoration: underline; }
-        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
-        .status-pending { background-color: #fff3e0; color: #e65100; }
-        .status-signed { background-color: #e8f5e9; color: #2e7d32; }
-        #download-btn { background-color: #2e7d32; margin-top: 10px; }
-        #download-btn:hover { background-color: #1b5e20; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #d32f2f; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
+        #status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; display: none; }
+        .info { background: #e3f2fd; color: #0d47a1; }
+        .error { background: #ffebee; color: #b71c1c; text-align: left; }
+        .success { background: #e8f5e9; color: #1b5e20; }
+        .error-title { font-weight: bold; margin-bottom: 5px; }
+        .error-detail { font-size: 0.85rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; margin-top: 5px; background: rgba(0,0,0,0.05); padding: 5px; border-radius: 4px; }
+        #result-link { display: block; margin-top: 1rem; color: var(--primary); font-weight: bold; text-decoration: none; word-break: break-all; }
+        #result-link:hover { text-decoration: underline; }
+        #download-btn { margin-top: 1rem; background-color: #2e7d32; }
+        .file-info { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Singpass PDF Signer</h1>
+        <p>Upload a PDF to sign via Singpass Sign V3</p>
         
-        <div id="drop-zone">
-            <p>Drag & Drop PDF here or click to select</p>
+        <div class="drop-zone" id="drop-zone">
+            Drag & drop PDF here or click to select
             <input type="file" id="file-input" accept="application/pdf" style="display: none;">
-            <div id="file-info">No file selected</div>
+            <div id="file-name" class="file-info">No file selected</div>
         </div>
 
         <div class="input-group">
-            <label for="nric">Signer NRIC (Optional)</label>
-            <input type="text" id="nric" placeholder="e.g. S1234567A">
+            <label for="signer-nric">Signer NRIC (Optional)</label>
+            <input type="text" id="signer-nric" placeholder="e.g. S1234567A">
         </div>
 
         <button id="sign-btn" disabled>Sign Document</button>
 
-        <div id="status-container">
-            <div id="polling-status">
-                <div class="loader"></div>
-                <span id="status-text">Preparing session...</span>
-            </div>
-            <div id="result-area" style="display: none;">
-                <span id="badge" class="status-badge"></span>
-                <p id="result-msg"></p>
-                <a id="signing-url" class="signing-link" target="_blank">Open Signing URL</a>
-                <button id="download-btn" style="display: none;">Download Signed PDF</button>
-            </div>
-        </div>
+        <div id="status"></div>
+        <a id="result-link" target="_blank" style="display: none;">Go to Singpass to Sign</a>
+        <button id="download-btn" style="display: none;">Download Signed PDF</button>
     </div>
 
     <script>
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
-        const fileInfo = document.getElementById('file-info');
-        const nricInput = document.getElementById('nric');
+        const fileNameDisplay = document.getElementById('file-name');
         const signBtn = document.getElementById('sign-btn');
-        const statusContainer = document.getElementById('status-container');
-        const pollingStatus = document.getElementById('polling-status');
-        const statusText = document.getElementById('status-text');
-        const resultArea = document.getElementById('result-area');
-        const badge = document.getElementById('badge');
-        const resultMsg = document.getElementById('result-msg');
-        const signingUrlLink = document.getElementById('signing-url');
+        const nricInput = document.getElementById('signer-nric');
+        const statusDiv = document.getElementById('status');
+        const resultLink = document.getElementById('result-link');
         const downloadBtn = document.getElementById('download-btn');
 
         let selectedFile = null;
-        let signRequestId = null;
-        let exchangeCode = null;
-        let pollInterval = null;
 
         dropZone.onclick = () => fileInput.click();
         
@@ -90,16 +124,14 @@
 
         dropZone.ondragover = (e) => {
             e.preventDefault();
-            dropZone.classList.add('dragover');
+            dropZone.classList.add('hover');
         };
 
-        dropZone.ondragleave = () => {
-            dropZone.classList.remove('dragover');
-        };
+        dropZone.ondragleave = () => dropZone.classList.remove('hover');
 
         dropZone.ondrop = (e) => {
             e.preventDefault();
-            dropZone.classList.remove('dragover');
+            dropZone.classList.remove('hover');
             if (e.dataTransfer.files.length > 0) {
                 handleFile(e.dataTransfer.files[0]);
             }
@@ -107,22 +139,25 @@
 
         function handleFile(file) {
             if (file.type !== 'application/pdf') {
-                alert('Please select a PDF file.');
+                alert('Please upload a PDF file.');
                 return;
             }
             selectedFile = file;
-            fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameDisplay.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             signBtn.disabled = false;
+            statusDiv.style.display = 'none';
+            resultLink.style.display = 'none';
+            downloadBtn.style.display = 'none';
         }
 
         signBtn.onclick = async () => {
             if (!selectedFile) return;
 
             signBtn.disabled = true;
-            statusContainer.style.display = 'block';
-            pollingStatus.style.display = 'block';
-            resultArea.style.display = 'none';
-            statusText.textContent = 'Creating signing session...';
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = '<div class="loader"></div> Initiating signing session...';
+            statusDiv.style.display = 'block';
+            resultLink.style.display = 'none';
 
             const formData = new FormData();
             formData.append('file', selectedFile);
@@ -139,44 +174,45 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    signRequestId = result.sign_request_id;
-                    exchangeCode = result.exchange_code;
-                    statusText.textContent = 'Waiting for signature...';
+                    statusDiv.className = 'success';
+                    statusDiv.textContent = 'Session created! Please sign the document via the link below.';
+                    resultLink.href = result.signing_url;
+                    resultLink.style.display = 'block';
                     
-                    resultArea.style.display = 'block';
-                    badge.textContent = 'Pending';
-                    badge.className = 'status-badge status-pending';
-                    resultMsg.textContent = 'Please sign the document using the link below:';
-                    signingUrlLink.href = result.signing_url;
-                    signingUrlLink.style.display = 'block';
-                    
-                    startPolling();
+                    pollStatus(result.sign_request_id, result.exchange_code);
                 } else {
-                    throw new Error(result.error || 'Failed to start signing session');
+                    statusDiv.className = 'error';
+                    let errorHtml = `<div class="error-title">Error ${response.status}: ${result.error || 'Request failed'}</div>`;
+                    if (result.error_description) errorHtml += `<div>${result.error_description}</div>`;
+                    if (result.error_details) errorHtml += `<div class="error-detail">${result.error_details}</div>`;
+                    if (result.raw) errorHtml += `<div class="error-detail">${typeof result.raw === 'string' ? result.raw : JSON.stringify(result.raw, null, 2)}</div>`;
+                    statusDiv.innerHTML = errorHtml;
+                    signBtn.disabled = false;
                 }
             } catch (err) {
-                alert('Error: ' + err.message);
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'Error: ' + err.message;
                 signBtn.disabled = false;
-                statusContainer.style.display = 'none';
             }
         };
 
-        function startPolling() {
-            if (pollInterval) clearInterval(pollInterval);
-            pollInterval = setInterval(async () => {
+        async function pollStatus(id, exchangeCode) {
+            const interval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/status?id=${signRequestId}&exchange_code=${exchangeCode}`);
+                    const response = await fetch(`/api/status?id=${id}&exchange_code=${exchangeCode}`);
                     const result = await response.json();
 
                     if (result.status === 'signed') {
-                        clearInterval(pollInterval);
-                        pollingStatus.style.display = 'none';
-                        badge.textContent = 'Signed';
-                        badge.className = 'status-badge status-signed';
-                        resultMsg.textContent = 'Document has been signed successfully!';
-                        signingUrlLink.style.display = 'none';
+                        clearInterval(interval);
+                        statusDiv.className = 'success';
+                        statusDiv.textContent = 'Document signed successfully!';
+                        resultLink.style.display = 'none';
                         downloadBtn.style.display = 'block';
                         downloadBtn.onclick = () => window.open(result.signed_doc_url, '_blank');
+                    } else if (result.status !== 'pending') {
+                        clearInterval(interval);
+                        statusDiv.className = 'error';
+                        statusDiv.textContent = 'Signing failed: ' + (result.error || 'Unknown error');
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
