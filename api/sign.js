@@ -106,7 +106,7 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
       sign_locations: [
         {
           page: 1,
-          x: 0.65,
+          x: 0.1,
           y: 0.1,
           width: 0.25,
           height: 0.06
