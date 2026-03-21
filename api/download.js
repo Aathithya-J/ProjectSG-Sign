@@ -101,33 +101,41 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
         // Always return JSON for non-PDF responses
         res.setHeader("Content-Type", "application/json");
 
+        // Try to parse as JSON if it looks like JSON
+        let parsedData = null;
+        if (contentType.includes("application/json")) {
+          try {
+            parsedData = JSON.parse(data);
+          } catch (e) {
+            // If parsing fails, treat as raw text
+          }
+        }
+
         if (isSuccess && !isPdf) {
           // Success but not a PDF (unexpected)
           res.status(200).json({
             error: "Expected PDF but received " + contentType,
-            raw: data.substring(0, 500),
+            details: parsedData || data.substring(0, 500),
           });
         } else if (apiRes.statusCode === 400) {
-          // Try to parse as JSON for 400 errors
-          try {
-            const result = JSON.parse(data);
-            res.status(400).json(result);
-          } catch (e) {
-            res.status(400).json({
-              error: "Document not yet signed or invalid request",
-              raw: data,
-            });
-          }
+          // 400 error - likely document not signed yet
+          const errorMsg = parsedData?.error || "Document not yet signed or invalid request";
+          const errorDescription = parsedData?.error_description || "";
+          res.status(400).json({
+            error: errorMsg,
+            description: errorDescription,
+            details: parsedData,
+          });
         } else if (apiRes.statusCode === 401 || apiRes.statusCode === 403) {
           res.status(apiRes.statusCode).json({
-            error: "Authentication failed. Please try signing again.",
+            error: "Authentication failed. Your session may have expired. Please try signing again.",
           });
         } else {
           // Generic error response
           res.status(apiRes.statusCode || 500).json({
             error: "Failed to retrieve signed document",
             status: apiRes.statusCode,
-            details: data.substring(0, 500),
+            details: parsedData || data.substring(0, 500),
           });
         }
       });
