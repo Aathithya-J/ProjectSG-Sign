@@ -65,6 +65,8 @@ function createJWT(payload, privateKey, kid, aud) {
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
 
+  // 1. Match /Count entries and take the largest.
+  // In a PDF Page Tree, the root node's /Count is the total page count.
   const allCountMatches = str.match(/\/Count\s+(\d+)/g);
   if (allCountMatches && allCountMatches.length > 0) {
     const counts = allCountMatches
@@ -73,15 +75,18 @@ function getPdfPageCount(buffer) {
     if (counts.length > 0) return Math.max(...counts);
   }
 
+  // 2. Fallback: Count explicit page objects (/Type /Page).
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
-  if (pageMatches) return pageMatches.length;
+  if (pageMatches && pageMatches.length > 0) {
+    return pageMatches.length;
+  }
 
+  // 3. Second Fallback: Search for /Page without /Type.
   const simplePageMatches = str.match(/\/Page\b/g);
-  if (simplePageMatches) {
-    const hasPages = str.includes("/Pages");
-    return hasPages
-      ? Math.max(1, simplePageMatches.length - 1)
-      : simplePageMatches.length;
+  if (simplePageMatches && simplePageMatches.length > 0) {
+    // If /Pages (plural) exists, one match is likely the root node, so subtract 1.
+    const hasPagesNode = str.includes("/Pages");
+    return hasPagesNode ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
   }
 
   return 1;

@@ -42,27 +42,36 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-// Robust page count detection: use the maximum /Count value to find the root page tree node
+/**
+ * Robust page count detection.
+ * Matches ALL /Count entries in the PDF and returns the maximum value, which
+ * corresponds to the root /Pages node (sub-tree nodes have smaller counts).
+ */
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
 
-  // Match ALL /Count entries and take the largest — the root /Pages node always has the highest count
+  // 1. Match /Count entries and take the largest.
+  // In a PDF Page Tree, the root node's /Count is the total page count.
   const allCountMatches = str.match(/\/Count\s+(\d+)/g);
   if (allCountMatches && allCountMatches.length > 0) {
-    const counts = allCountMatches.map((m) => parseInt(m.match(/(\d+)/)[1], 10)).filter((n) => !isNaN(n) && n > 0);
+    const counts = allCountMatches
+      .map((m) => parseInt(m.match(/(\d+)/)[1], 10))
+      .filter((n) => !isNaN(n) && n > 0);
     if (counts.length > 0) return Math.max(...counts);
   }
 
-  // Fallback: count explicit page objects
+  // 2. Fallback: Count explicit page objects (/Type /Page).
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
-  if (pageMatches) {
+  if (pageMatches && pageMatches.length > 0) {
     return pageMatches.length;
   }
 
+  // 3. Second Fallback: Search for /Page without /Type.
   const simplePageMatches = str.match(/\/Page\b/g);
-  if (simplePageMatches) {
-    const hasPages = str.includes("/Pages");
-    return hasPages ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
+  if (simplePageMatches && simplePageMatches.length > 0) {
+    // If /Pages (plural) exists, one match is likely the root node, so subtract 1.
+    const hasPagesNode = str.includes("/Pages");
+    return hasPagesNode ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
   }
 
   return 1;
@@ -87,7 +96,7 @@ module.exports = async (req, res) => {
       chunks.push(chunk);
     }
     const body = Buffer.concat(chunks);
-    const contentType = req.headers["content-type"];
+    const contentType = req.headers["content-type"] || "";
     const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
     const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : null;
 
@@ -145,7 +154,6 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 100); // Support up to 100 pages
 
     // Create signature locations for each page
-    // Positioning: bottom right area of the page for visibility
     const signLocations = [];
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({

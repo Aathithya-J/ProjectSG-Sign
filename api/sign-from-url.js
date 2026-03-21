@@ -44,27 +44,36 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-// Robust page count detection: use the maximum /Count value to find the root page tree node
+/**
+ * Robust page count detection.
+ * Matches ALL /Count entries in the PDF and returns the maximum value, which
+ * corresponds to the root /Pages node (sub-tree nodes have smaller counts).
+ */
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
 
-  // Match ALL /Count entries and take the largest — the root /Pages node always has the highest count
+  // 1. Match /Count entries and take the largest.
+  // In a PDF Page Tree, the root node's /Count is the total page count.
   const allCountMatches = str.match(/\/Count\s+(\d+)/g);
   if (allCountMatches && allCountMatches.length > 0) {
-    const counts = allCountMatches.map((m) => parseInt(m.match(/(\d+)/)[1], 10)).filter((n) => !isNaN(n) && n > 0);
+    const counts = allCountMatches
+      .map((m) => parseInt(m.match(/(\d+)/)[1], 10))
+      .filter((n) => !isNaN(n) && n > 0);
     if (counts.length > 0) return Math.max(...counts);
   }
 
-  // Fallback: count explicit page objects
+  // 2. Fallback: Count explicit page objects (/Type /Page).
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
-  if (pageMatches) {
+  if (pageMatches && pageMatches.length > 0) {
     return pageMatches.length;
   }
 
+  // 3. Second Fallback: Search for /Page without /Type.
   const simplePageMatches = str.match(/\/Page\b/g);
-  if (simplePageMatches) {
-    const hasPages = str.includes("/Pages");
-    return hasPages ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
+  if (simplePageMatches && simplePageMatches.length > 0) {
+    // If /Pages (plural) exists, one match is likely the root node, so subtract 1.
+    const hasPagesNode = str.includes("/Pages");
+    return hasPagesNode ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
   }
 
   return 1;
@@ -178,51 +187,52 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
       },
     };
 
-    return new Promise(() => {
-      const request = https.request(apiUrl, options, (response) => {
-        let data = "";
-        response.on("data", (chunk) => (data += chunk));
-        response.on("end", () => {
-          try {
-            const result = JSON.parse(data);
-            if (response.statusCode === 200 || response.statusCode === 201) {
-              console.log("Sign request successful:", result);
-              res.status(200).json({
-                success: true,
-                redirect_url: result.redirect_url,
-                request_id: result.request_id,
-                exchange_code: result.exchange_code,
-              });
-            } else {
-              console.error("Singpass API error:", result);
-              res.status(response.statusCode || 500).json({
-                success: false,
-                error: result.error || "Failed to create sign request",
-                details: result,
-              });
-            }
-          } catch (e) {
-            console.error("Error parsing response:", e);
-            res.status(500).json({
+    const apiReq = https.request(apiUrl, options, (response) => {
+      let data = "";
+      response.on("data", (chunk) => (data += chunk));
+      response.on("end", () => {
+        try {
+          const result = JSON.parse(data);
+          if (response.statusCode === 200 || response.statusCode === 201) {
+            console.log("Sign request successful:", result);
+            res.status(200).json({
+              success: true,
+              redirect_url: result.redirect_url,
+              request_id: result.request_id,
+              exchange_code: result.exchange_code,
+              // Normalize for index.html compatibility
+              sign_request_id: result.request_id,
+              signing_url: result.signing_url
+            });
+          } else {
+            console.error("Singpass API error:", result);
+            res.status(response.statusCode || 500).json({
               success: false,
-              error: "Failed to parse Singpass response",
+              error: result.error || "Failed to create sign request",
+              details: result,
             });
           }
-        });
+        } catch (e) {
+          console.error("Error parsing response:", e);
+          res.status(500).json({
+            success: false,
+            error: "Failed to parse Singpass response",
+          });
+        }
       });
-
-      request.on("error", (error) => {
-        console.error("Request error:", error);
-        res.status(500).json({
-          success: false,
-          error: "Failed to communicate with Singpass API",
-          details: error.message,
-        });
-      });
-
-      request.write(pdfBuffer);
-      request.end();
     });
+
+    apiReq.on("error", (error) => {
+      console.error("Request error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to communicate with Singpass API",
+        details: error.message,
+      });
+    });
+
+    apiReq.write(pdfBuffer);
+    apiReq.end();
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
