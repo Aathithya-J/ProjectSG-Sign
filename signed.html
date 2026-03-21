@@ -93,7 +93,6 @@
         
         <div class="button-group" id="button-group" style="display: none;">
             <button id="download-btn">Download Signed PDF</button>
-            <button id="continue-btn">Continue</button>
         </div>
     </div>
 
@@ -106,7 +105,6 @@
         const loader = document.getElementById('loader');
         const buttonGroup = document.getElementById('button-group');
         const downloadBtn = document.getElementById('download-btn');
-        const continueBtn = document.getElementById('continue-btn');
         const title = document.getElementById('title');
         const message = document.getElementById('message');
 
@@ -146,8 +144,8 @@
                 downloadBtn.disabled = true;
                 downloadBtn.textContent = 'Downloading...';
                 try {
-                    // Fetch the PDF as a blob to ensure proper filename and extension
-                    const response = await fetch(signedDocUrl);
+                    // Use the backend proxy to fetch the PDF and bypass CORS
+                    const response = await fetch(`/api/download?id=${requestId}&exchange_code=${exchangeCode}`);
                     if (!response.ok) throw new Error('Failed to download document');
                     const blob = await response.blob();
                     
@@ -166,6 +164,11 @@
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(blobUrl);
                     
+                    // Clean up localStorage after successful download
+                    localStorage.removeItem('last_exchange_code');
+                    localStorage.removeItem('last_request_id');
+                    localStorage.removeItem('last_filename');
+                    
                     downloadBtn.textContent = 'Download Signed PDF';
                     downloadBtn.disabled = false;
                 } catch (err) {
@@ -177,14 +180,7 @@
                 }
             };
 
-            continueBtn.onclick = () => {
-                // Clean up localStorage
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                // Redirect back to main page
-                window.location.href = '/';
-            };
+
         }
 
         function showError(errorMsg) {
@@ -194,14 +190,6 @@
             statusDiv.className = 'error';
             statusDiv.textContent = errorMsg;
             statusDiv.style.display = 'block';
-            
-            continueBtn.textContent = 'Go Back';
-            buttonGroup.style.display = 'flex';
-            downloadBtn.style.display = 'none';
-            
-            continueBtn.onclick = () => {
-                window.location.href = '/';
-            };
         }
 
         // Fetch signed document when page loads

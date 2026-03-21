@@ -239,7 +239,7 @@
                             const originalText = downloadBtn.textContent;
                             downloadBtn.textContent = 'Downloading...';
                             try {
-                                const response = await fetch(result.signed_doc_url);
+                                const response = await fetch(`/api/download?id=${id}&exchange_code=${exchangeCode}`);
                                 if (!response.ok) throw new Error('Failed to download document');
                                 const blob = await response.blob();
                                 
