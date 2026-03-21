@@ -20,9 +20,11 @@ function createJWT(payload, privateKey, kid, aud) {
   const fullPayload = {
     ...payload,
     iat: iat,
-    exp: iat + 120, // Must be issued within 2 minutes
+    exp: iat + 120, // Valid for 2 minutes
     jti: crypto.randomUUID(),
     aud: aud,
+    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Issuer is the Client ID
+    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4", // Subject is also the Client ID
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -54,6 +56,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "Missing sign_request_id or exchange_code" });
   }
 
+  const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
   const kid = "key-1";
   const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
   const apiUrl = `https://staging.sign.singpass.gov.sg/api/v3/sign-requests/${id}/signed-doc`;
@@ -61,6 +64,7 @@ module.exports = async (req, res) => {
   const jwt = createJWT(
     {
       exchange_code: exchange_code,
+      client_id: clientId,
     },
     privateKey,
     kid,
