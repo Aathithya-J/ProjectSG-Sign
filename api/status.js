@@ -1,61 +1,103 @@
-// api/status.js
 const crypto = require('crypto');
+const https = require('https');
 
-function base64url(buf) {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+function base64UrlEncode(str) {
+  return Buffer.from(str)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
-function buildJwt({ clientId, kid, privateKeyPem, signRequestId }) {
-  const header = base64url(Buffer.from(JSON.stringify({ alg: 'ES256', kid })));
-  const now = Math.floor(Date.now() / 1000);
-  const payload = base64url(Buffer.from(JSON.stringify({
-    client_id: clientId,
-    sign_request_id: signRequestId,
-    iat: now,
-    jti: crypto.randomUUID(),
-  })));
-  const signingInput = `${header}.${payload}`;
-  const privateKey = crypto.createPrivateKey({ key: privateKeyPem, format: 'pem' });
-  const sigBuf = crypto.sign('sha256', Buffer.from(signingInput), {
-    key: privateKey,
-    dsaEncoding: 'ieee-p1363',
-  });
-  return `${signingInput}.${base64url(sigBuf)}`;
+function createJWT(payload, privateKey, kid, aud) {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+    kid: kid
+  };
+  
+  const iat = Math.floor(Date.now() / 1000);
+  const fullPayload = {
+    ...payload,
+    iat: iat,
+    exp: iat + 300,
+    jti: crypto.randomBytes(16).toString('hex'),
+    aud: aud
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(signatureInput);
+  const signature = signer.sign(privateKey, 'base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  return `${signatureInput}.${signature}`;
 }
 
-module.exports = async function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  const { sign_request_id } = req.query;
-  if (!sign_request_id) return res.status(400).json({ error: 'Missing sign_request_id' });
-
-  try {
-    const clientId = process.env.SINGPASS_CLIENT_ID;
-    const kid = process.env.SINGPASS_KID;
-    const rawPem = process.env.SINGPASS_PRIVATE_KEY_PEM;
-
-    if (!clientId || !kid || !rawPem) {
-      return res.status(500).json({ error: 'Missing env vars' });
-    }
-
-    const privateKeyPem = rawPem.replace(/\\n/g, '\n');
-    const jwt = buildJwt({ clientId, kid, privateKeyPem, signRequestId: sign_request_id });
-
-    const singpassRes = await fetch(
-      `https://staging.sign.singpass.gov.sg/api/v3/sign-requests/${encodeURIComponent(sign_request_id)}`,
-      { method: 'GET', headers: { Authorization: `Bearer ${jwt}` } }
-    );
-
-    if (!singpassRes.ok) {
-      const errText = await singpassRes.text();
-      return res.status(502).json({ error: 'Singpass error', status: singpassRes.status, detail: errText });
-    }
-
-    const data = await singpassRes.json();
-    return res.status(200).json({ status: data.status, signed_doc_url: data.signed_doc_url ?? null });
-
-  } catch (err) {
-    console.error('status.js error:', err);
-    return res.status(500).json({ error: err.message });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
+
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).json({ error: 'Missing sign_request_id' });
+  }
+
+  const clientId = 'WTYhkYnUJubcEOzDokeJO4szhblsEzF4';
+  const kid = 'key-1';
+  const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
+  const apiBase = 'https://stg-api.sign.singpass.gov.sg';
+  const apiUrl = `${apiBase}/v3/signing-sessions/${id}/result`;
+
+  const jwt = createJWT({
+    sub: clientId,
+    iss: clientId
+  }, privateKey, kid, apiUrl);
+
+  const options = {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${jwt}`,
+      'Accept': 'application/json'
+    }
+  };
+
+  const apiReq = https.request(apiUrl, options, (apiRes) => {
+    let data = '';
+    apiRes.on('data', (chunk) => data += chunk);
+    apiRes.on('end', () => {
+      try {
+        const result = JSON.parse(data);
+        if (apiRes.statusCode === 200) {
+          if (result.status === 'signed') {
+            res.status(200).json({ status: 'signed', signed_doc_url: result.signed_doc_url });
+          } else {
+            res.status(200).json({ status: 'pending' });
+          }
+        } else if (apiRes.statusCode === 202) {
+          res.status(200).json({ status: 'pending' });
+        } else {
+          res.status(apiRes.statusCode).json(result);
+        }
+      } catch (e) {
+        res.status(500).json({ error: 'Failed to parse API response', raw: data });
+      }
+    });
+  });
+
+  apiReq.on('error', (e) => {
+    res.status(500).json({ error: e.message });
+  });
+
+  apiReq.end();
 };

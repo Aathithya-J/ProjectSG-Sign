@@ -1,140 +1,181 @@
-// api/sign.js
 const crypto = require('crypto');
+const https = require('https');
 
-function base64url(buf) {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+function base64UrlEncode(str) {
+  return Buffer.from(str)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
-function buildJwt({ clientId, docName, x, y, page, privateKeyPem, kid }) {
-  const header = base64url(Buffer.from(JSON.stringify({ alg: 'ES256', kid })));
-  const now = Math.floor(Date.now() / 1000);
-  const payload = base64url(Buffer.from(JSON.stringify({
-    client_id: clientId,
-    doc_name: docName,
-    x, y, page,
-    iat: now,
-    jti: crypto.randomUUID(),
-  })));
+function createJWT(payload, privateKey, kid, aud) {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+    kid: kid
+  };
+  
+  const iat = Math.floor(Date.now() / 1000);
+  const fullPayload = {
+    ...payload,
+    iat: iat,
+    exp: iat + 300,
+    jti: crypto.randomBytes(16).toString('hex'),
+    aud: aud
+  };
 
-  const signingInput = `${header}.${payload}`;
-  const privateKey = crypto.createPrivateKey({ key: privateKeyPem, format: 'pem' });
-  const sigBuf = crypto.sign('sha256', Buffer.from(signingInput), {
-    key: privateKey,
-    dsaEncoding: 'ieee-p1363',
-  });
-  return `${signingInput}.${base64url(sigBuf)}`;
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+  
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(signatureInput);
+  const signature = signer.sign(privateKey, 'base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  return `${signatureInput}.${signature}`;
 }
 
-module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    // Read raw body
     const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
+    for await (const chunk of req) {
+      chunks.push(chunk);
+    }
     const body = Buffer.concat(chunks);
+    const contentType = req.headers['content-type'];
+    const boundary = contentType.split('boundary=')[1];
 
-    const contentType = req.headers['content-type'] || '';
-    const boundaryMatch = contentType.match(/boundary=([^\s;]+)/);
-    if (!boundaryMatch) return res.status(400).json({ error: 'Missing multipart boundary' });
-    const boundary = boundaryMatch[1];
-
-    const pdfBuffer = extractFilePart(body, boundary);
-    if (!pdfBuffer) return res.status(400).json({ error: 'No PDF file found in upload' });
-
-    const fields = extractFormFields(body, boundary);
-    const docName = fields.doc_name || 'document.pdf';
-    const x = Number(fields.x ?? 0.5);
-    const y = Number(fields.y ?? 0.1);
-    const page = Number(fields.page ?? 1);
-
-    const clientId = process.env.SINGPASS_CLIENT_ID;
-    const kid = process.env.SINGPASS_KID;
-    const rawPem = process.env.SINGPASS_PRIVATE_KEY_PEM;
-
-    if (!clientId || !kid || !rawPem) {
-      return res.status(500).json({ error: 'Missing env vars: SINGPASS_CLIENT_ID, SINGPASS_KID, or SINGPASS_PRIVATE_KEY_PEM' });
+    if (!boundary) {
+      return res.status(400).json({ error: 'Invalid content type' });
     }
 
-    const privateKeyPem = rawPem.replace(/\\n/g, '\n');
-    const jwt = buildJwt({ clientId, docName, x, y, page, privateKeyPem, kid });
+    const parts = body.toString('binary').split('--' + boundary);
+    let pdfBuffer = null;
+    let signerNric = null;
+    let fileName = 'document.pdf';
 
-    const singpassRes = await fetch('https://staging.sign.singpass.gov.sg/api/v3/sign-requests', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': 'application/octet-stream',
-      },
-      body: pdfBuffer,
-    });
+    for (const part of parts) {
+      if (part.includes('name="file"')) {
+        const headerEnd = part.indexOf('\r\n\r\n');
+        const content = part.substring(headerEnd + 4, part.lastIndexOf('\r\n'));
+        pdfBuffer = Buffer.from(content, 'binary');
+        const filenameMatch = part.match(/filename="([^"]+)"/);
+        if (filenameMatch) fileName = filenameMatch[1];
+      } else if (part.includes('name="signer_nric"')) {
+        const headerEnd = part.indexOf('\r\n\r\n');
+        signerNric = part.substring(headerEnd + 4, part.lastIndexOf('\r\n')).trim();
+      }
+    }
 
-    const responseText = await singpassRes.text();
-    console.log('Singpass status:', singpassRes.status);
-    console.log('Singpass response:', responseText);
+    if (!pdfBuffer) {
+      return res.status(400).json({ error: 'No PDF file provided' });
+    }
 
-    if (singpassRes.status !== 201 && singpassRes.status !== 200) {
-      return res.status(502).json({
-        error: 'Singpass API error',
-        status: singpassRes.status,
-        detail: responseText,
+    const clientId = 'WTYhkYnUJubcEOzDokeJO4szhblsEzF4';
+    const kid = 'key-1';
+    const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
+    const apiBase = 'https://stg-api.sign.singpass.gov.sg';
+    const apiUrl = `${apiBase}/v3/signing-sessions`;
+    const webhookBase = process.env.WEBHOOK_BASE_URL;
+
+    const jwt = createJWT({
+      sub: clientId,
+      iss: clientId
+    }, privateKey, kid, apiUrl);
+
+    const signLocations = [];
+    for (let i = 1; i <= 20; i++) {
+      signLocations.push({
+        page_index: i,
+        x: 0.72,
+        y: 0.05,
+        width: 0.25,
+        height: 0.06
       });
     }
 
-    const data = JSON.parse(responseText);
-    return res.status(200).json({
-      sign_request_id: data.sign_request_id,
-      signing_url: data.signing_url,
-      exchange_code: data.exchange_code,
+    const payloadJson = {
+      doc_name: fileName,
+      sign_locations: signLocations
+    };
+
+    if (signerNric) {
+      payloadJson.signer_uin_hash = crypto.createHash('sha256').update(signerNric).digest('hex');
+    }
+
+    if (webhookBase) {
+      payloadJson.webhook_url = `${webhookBase}/api/webhook/singpass`;
+    }
+
+    const requestBoundary = '----ManusBoundary' + crypto.randomBytes(8).toString('hex');
+    const header = `--${requestBoundary}\r\nContent-Disposition: form-data; name="payload"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payloadJson)}\r\n--${requestBoundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/pdf\r\n\r\n`;
+    const footer = `\r\n--${requestBoundary}--`;
+
+    const requestBody = Buffer.concat([
+      Buffer.from(header),
+      pdfBuffer,
+      Buffer.from(footer)
+    ]);
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${jwt}`,
+        'Content-Type': `multipart/form-data; boundary=${requestBoundary}`,
+        'Content-Length': requestBody.length
+      }
+    };
+
+    const apiReq = https.request(apiUrl, options, (apiRes) => {
+      let data = '';
+      apiRes.on('data', (chunk) => data += chunk);
+      apiRes.on('end', () => {
+        try {
+          const result = JSON.parse(data);
+          if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+            res.status(200).json({
+              sign_request_id: result.sign_request_id,
+              signing_url: result.signing_url
+            });
+          } else {
+            res.status(apiRes.statusCode).json(result);
+          }
+        } catch (e) {
+          res.status(500).json({ error: 'Failed to parse API response', raw: data });
+        }
+      });
     });
 
+    apiReq.on('error', (e) => {
+      res.status(500).json({ error: e.message });
+    });
+
+    apiReq.write(requestBody);
+    apiReq.end();
+
   } catch (err) {
-    console.error('sign.js error:', err);
-    return res.status(500).json({ error: err.message, stack: err.stack });
+    res.status(500).json({ error: err.message });
   }
 };
 
-module.exports.config = { api: { bodyParser: false } };
-
-function extractFilePart(body, boundary) {
-  const boundaryBuf = Buffer.from(`--${boundary}`);
-  let start = 0;
-  while (start < body.length) {
-    const boundaryIdx = body.indexOf(boundaryBuf, start);
-    if (boundaryIdx === -1) break;
-    const headerStart = boundaryIdx + boundaryBuf.length + 2;
-    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
-    if (headerEnd === -1) break;
-    const headerStr = body.slice(headerStart, headerEnd).toString('utf8');
-    const nextBoundary = body.indexOf(boundaryBuf, headerEnd + 4);
-    const partEnd = nextBoundary === -1 ? body.length : nextBoundary - 2;
-    const partBody = body.slice(headerEnd + 4, partEnd);
-    if (headerStr.includes('filename=') || headerStr.toLowerCase().includes('application/pdf')) {
-      return partBody;
-    }
-    start = boundaryIdx + boundaryBuf.length;
+module.exports.config = {
+  api: {
+    bodyParser: false
   }
-  return null;
-}
-
-function extractFormFields(body, boundary) {
-  const boundaryBuf = Buffer.from(`--${boundary}`);
-  const fields = {};
-  let start = 0;
-  while (start < body.length) {
-    const boundaryIdx = body.indexOf(boundaryBuf, start);
-    if (boundaryIdx === -1) break;
-    const headerStart = boundaryIdx + boundaryBuf.length + 2;
-    const headerEnd = body.indexOf(Buffer.from('\r\n\r\n'), headerStart);
-    if (headerEnd === -1) break;
-    const headerStr = body.slice(headerStart, headerEnd).toString('utf8');
-    const nextBoundary = body.indexOf(boundaryBuf, headerEnd + 4);
-    const partEnd = nextBoundary === -1 ? body.length : nextBoundary - 2;
-    const partBody = body.slice(headerEnd + 4, partEnd).toString('utf8').trim();
-    if (!headerStr.includes('filename=')) {
-      const nameMatch = headerStr.match(/name="([^"]+)"/);
-      if (nameMatch) fields[nameMatch[1]] = partBody;
-    }
-    start = boundaryIdx + boundaryBuf.length;
-  }
-  return fields;
-}
+};

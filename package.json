@@ -1,9 +1,7 @@
 {
-  "name": "singpass-sign-v3",
+  "name": "singpass-sign-v3-app",
   "version": "1.0.0",
-  "private": true,
-  "description": "Singpass Sign V3 integration for Vercel",
   "engines": {
-    "node": ">=18"
+    "node": ">=18.x"
   }
 }

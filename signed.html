@@ -1,239 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Document Signed – SignSG</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --red: #E8002D;
-      --ink: #0D0D0D;
-      --ink-soft: #3A3A3A;
-      --sand: #F5F1EA;
-      --border: rgba(13,13,13,0.12);
-      --success: #1A7A4A;
-      --success-bg: #E8F5EE;
-    }
-
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--sand);
-      color: var(--ink);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 52px 44px;
-      max-width: 440px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 8px 48px rgba(0,0,0,0.07);
-      animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-    }
-
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .check-wrap {
-      width: 80px; height: 80px;
-      border-radius: 50%;
-      background: var(--success-bg);
-      display: grid; place-items: center;
-      margin: 0 auto 28px;
-      animation: pop 0.4s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-    }
-
-    @keyframes pop {
-      from { transform: scale(0.5); opacity: 0; }
-      to   { transform: scale(1);   opacity: 1; }
-    }
-
-    .check-wrap svg {
-      width: 36px; height: 36px;
-      stroke: var(--success);
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    /* animated checkmark draw */
-    .check-wrap svg path {
-      stroke-dasharray: 40;
-      stroke-dashoffset: 40;
-      animation: draw 0.4s 0.45s ease forwards;
-    }
-    @keyframes draw { to { stroke-dashoffset: 0; } }
-
-    h1 {
-      font-family: 'DM Serif Display', serif;
-      font-size: 28px;
-      letter-spacing: -0.5px;
-      margin-bottom: 10px;
-    }
-
-    .subtitle {
-      font-size: 15px;
-      color: var(--ink-soft);
-      line-height: 1.6;
-      margin-bottom: 32px;
-    }
-
-    .info-block {
-      background: var(--sand);
-      border-radius: 12px;
-      padding: 16px 18px;
-      text-align: left;
-      margin-bottom: 28px;
-    }
-
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      padding: 4px 0;
-    }
-    .info-row + .info-row { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
-    .info-label { color: var(--ink-soft); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
-    .info-value { font-weight: 500; font-size: 13px; max-width: 60%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .signed-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: var(--success-bg);
-      color: var(--success);
-      font-size: 12px;
-      font-weight: 500;
-      padding: 3px 10px;
-      border-radius: 20px;
-    }
-    .signed-badge::before {
-      content: '';
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-    }
-
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 0 0 24px;
-    }
-
-    .close-note {
-      font-size: 12px;
-      color: var(--ink-soft);
-      line-height: 1.5;
-    }
-    .close-note strong { color: var(--ink); }
-
-    /* SP branding strip */
-    .sp-strip {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      margin-top: 32px;
-      font-size: 11px;
-      color: #aaa;
-    }
-    .sp-strip svg { width: 14px; height: 14px; }
-
-    /* error state */
-    .error-card .check-wrap { background: #FEE; }
-    .error-card .check-wrap svg { stroke: #C0392B; }
-    .error-card h1 { color: #C0392B; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Signed - Singpass PDF Signer</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f7f9; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 500px; text-align: center; }
+        .success-icon { color: #2e7d32; font-size: 64px; margin-bottom: 20px; }
+        h1 { margin-bottom: 20px; font-size: 24px; color: #2e7d32; }
+        p { margin-bottom: 30px; color: #666; line-height: 1.5; }
+        .btn { display: inline-block; background-color: #d32f2f; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600; transition: background-color 0.3s; }
+        .btn:hover { background-color: #b71c1c; }
+    </style>
 </head>
 <body>
-
-<div class="card" id="main-card">
-  <div class="check-wrap">
-    <svg viewBox="0 0 24 24" fill="none">
-      <path d="M5 13l4 4L19 7"/>
-    </svg>
-  </div>
-
-  <h1>You're all signed!</h1>
-  <p class="subtitle">Your document has been digitally signed via Singpass.<br/>You may now close this window.</p>
-
-  <div class="info-block">
-    <div class="info-row">
-      <span class="info-label">Status</span>
-      <span class="signed-badge">Signed</span>
+    <div class="container">
+        <div class="success-icon">✓</div>
+        <h1>Document signed successfully</h1>
+        <p>Your document has been signed via Singpass. You can close this window or return to the application to download the signed file.</p>
+        <a href="/" class="btn">Return to App</a>
     </div>
-    <div class="info-row">
-      <span class="info-label">Signed at</span>
-      <span class="info-value" id="signed-time">—</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Request ID</span>
-      <span class="info-value" id="req-id">—</span>
-    </div>
-  </div>
-
-  <div class="divider"></div>
-
-  <p class="close-note">
-    The signed document will be available for download from the <strong>operator's device</strong>.<br/>
-    This window can be safely closed.
-  </p>
-
-  <div class="sp-strip">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
-    </svg>
-    Signed with Singpass
-  </div>
-</div>
-
-<script>
-  // Singpass redirects here with ?sign_request_id=xxx in the URL
-  const params = new URLSearchParams(window.location.search);
-  const reqId  = params.get("sign_request_id") || params.get("id") || "—";
-  const state  = params.get("state") || "";
-  const error  = params.get("error") || "";
-
-  if (error) {
-    // Handle error redirect from Singpass
-    document.getElementById("main-card").classList.add("error-card");
-    document.querySelector("h1").textContent = "Signing cancelled";
-    document.querySelector(".subtitle").textContent =
-      "The signing process was not completed. You may close this window.";
-    document.querySelector(".check-wrap svg path").setAttribute("d", "M6 6l12 12M6 18L18 6");
-  }
-
-  // Populate info
-  document.getElementById("req-id").textContent = reqId.length > 20
-    ? reqId.slice(0, 10) + "…" + reqId.slice(-6)
-    : reqId;
-
-  document.getElementById("signed-time").textContent = new Date().toLocaleString("en-SG", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit"
-  });
-
-  // Notify the parent window if opened as popup (optional enhancement)
-  try {
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({ type: "SINGPASS_SIGNED", sign_request_id: reqId }, "*");
-    }
-  } catch (_) {}
-</script>
-
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestId = urlParams.get('sign_request_id');
+        if (requestId) {
+            console.log('Signed request ID:', requestId);
+        }
+    </script>
 </body>
 </html>

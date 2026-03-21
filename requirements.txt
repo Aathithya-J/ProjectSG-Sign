@@ -1,1 +1,0 @@
-# No dependencies — sign.py uses stdlib only

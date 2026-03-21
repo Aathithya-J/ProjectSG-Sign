@@ -1,20 +1,25 @@
-// api/jwks.js
-module.exports = function handler(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+module.exports = (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
 
   const jwks = {
-    keys: [{
-      kty: 'EC',
-      crv: 'P-256',
-      use: 'sig',
-      alg: 'ES256',
-      kid: 'a90580b7-34e8-4e4d-ab6a-03bd26249c7c',
-      x: 'LJnSx3j5HDMdTaKq0zYHLh53gdE9pSgaTp_I_pbQwLU',
-      y: 'q9_A0aua5mpvzJwMAMkFhMlBz3llnepZEj6MrvtrDWw',
-    }],
+    "keys": [
+      {
+        "kty": "RSA",
+        "use": "sig",
+        "alg": "RS256",
+        "kid": "key-1",
+        "n": "qV7gM-2TT2gRRix0qlhzMysgcOuM9kmx8k_k3HgJvx0-XbTr0V99LoF3f-Gcn9g_2b_KgpelqrEssCQYK1dnFsDGLWhpD7JwGmIRkYSfSOCzMm-BW83AuJU0vCkmNrr1RT5-rehba76kNPolZDJdjgYrnu0aKvzAt3uZnGHGm4L2c625Fv6BgDj32sb3Wsm06nDEjxKmDWa3DiJL1C-ZCcdvnSCITwMbMI5H5g9uYvVkRXavxtba6-l5r_SaMqVbkkYIFg0ql8QKbXK2TvAQUkIBM8fdKq2iFgmVd3H7W6FRuNRtv53ctebvpPzbhFu3ykLkKsGTGjcB89yZYHWO2w",
+        "e": "AQAB"
+      }
+    ]
   };
 
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.setHeader('Content-Type', 'application/json');
-  return res.status(200).json(jwks);
+  res.status(200).json(jwks);
 };
