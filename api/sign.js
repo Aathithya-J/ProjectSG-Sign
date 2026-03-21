@@ -103,7 +103,15 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     const jwtPayload = {
       client_id: clientId,
       doc_name: fileName,
-      sign_locations: [{ page: 1, x: 0.72, y: 0.05 }]
+      sign_locations: [
+        {
+          page: 1,
+          x: 0.72,
+          y: 0.05,
+          width: 0.25,
+          height: 0.06
+        }
+      ]
     };
 
     if (signerNric) {
