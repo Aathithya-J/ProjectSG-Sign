@@ -240,8 +240,33 @@
                             downloadBtn.textContent = 'Downloading...';
                             try {
                                 const response = await fetch(`/api/download?id=${id}&exchange_code=${exchangeCode}`);
-                                if (!response.ok) throw new Error('Failed to download document');
+                                
+                                // Check if response is JSON (error response)
+                                const contentType = response.headers.get('content-type') || '';
+                                if (contentType.includes('application/json')) {
+                                    const errorData = await response.json();
+                                    throw new Error(errorData.error || 'Download failed');
+                                }
+                                
+                                // Check if response is successful
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: Failed to download document`);
+                                }
+                                
+                                // Check if we got a PDF
+                                if (!contentType.includes('application/pdf')) {
+                                    throw new Error('Invalid response: Expected PDF file');
+                                }
+                                
                                 const blob = await response.blob();
+                                
+                                // Verify blob is not empty and looks like a PDF
+                                if (blob.size === 0) {
+                                    throw new Error('Downloaded file is empty');
+                                }
+                                if (!blob.type.includes('application/pdf')) {
+                                    throw new Error('Downloaded file is not a valid PDF');
+                                }
                                 
                                 const blobUrl = window.URL.createObjectURL(blob);
                                 const link = document.createElement('a');

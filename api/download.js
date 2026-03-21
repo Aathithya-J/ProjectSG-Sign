@@ -81,35 +81,65 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
   };
 
   const apiReq = https.request(apiUrl, options, (apiRes) => {
-    // If the API returns the PDF, stream it directly to the client
-    if (apiRes.statusCode === 200 && apiRes.headers["content-type"]?.includes("application/pdf")) {
+    const contentType = apiRes.headers["content-type"] || "";
+    const isPdf = contentType.includes("application/pdf");
+    const isSuccess = apiRes.statusCode === 200;
+
+    if (isSuccess && isPdf) {
+      // Stream the PDF directly to the client
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", "attachment; filename=signed_document.pdf");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       apiRes.pipe(res);
     } else {
-      // Otherwise, collect the response and return as JSON
+      // Collect the response body for error handling
       let data = "";
-      apiRes.on("data", (chunk) => (data += chunk));
+      apiRes.on("data", (chunk) => {
+        data += chunk;
+      });
       apiRes.on("end", () => {
-        try {
-          if (
-            apiRes.headers["content-type"] &&
-            apiRes.headers["content-type"].includes("application/json")
-          ) {
+        // Always return JSON for non-PDF responses
+        res.setHeader("Content-Type", "application/json");
+
+        if (isSuccess && !isPdf) {
+          // Success but not a PDF (unexpected)
+          res.status(200).json({
+            error: "Expected PDF but received " + contentType,
+            raw: data.substring(0, 500),
+          });
+        } else if (apiRes.statusCode === 400) {
+          // Try to parse as JSON for 400 errors
+          try {
             const result = JSON.parse(data);
-            res.status(apiRes.statusCode).json(result);
-          } else {
-            res.status(apiRes.statusCode).json({ error: "API returned non-JSON response", raw: data });
+            res.status(400).json(result);
+          } catch (e) {
+            res.status(400).json({
+              error: "Document not yet signed or invalid request",
+              raw: data,
+            });
           }
-        } catch (e) {
-          res.status(500).json({ error: "Failed to parse API response", raw: data });
+        } else if (apiRes.statusCode === 401 || apiRes.statusCode === 403) {
+          res.status(apiRes.statusCode).json({
+            error: "Authentication failed. Please try signing again.",
+          });
+        } else {
+          // Generic error response
+          res.status(apiRes.statusCode || 500).json({
+            error: "Failed to retrieve signed document",
+            status: apiRes.statusCode,
+            details: data.substring(0, 500),
+          });
         }
       });
     }
   });
 
   apiReq.on("error", (e) => {
-    res.status(500).json({ error: e.message });
+    console.error("API request error:", e);
+    res.status(500).json({
+      error: "Failed to connect to signing service",
+      details: e.message,
+    });
   });
 
   apiReq.end();
