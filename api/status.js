@@ -9,7 +9,7 @@ function base64UrlEncode(str) {
     .replace(/=/g, '');
 }
 
-function createJWT(payload, privateKey, kid, aud) {
+function createJWT(payload, privateKey, kid) {
   const header = {
     alg: 'RS256',
     typ: 'JWT',
@@ -20,9 +20,8 @@ function createJWT(payload, privateKey, kid, aud) {
   const fullPayload = {
     ...payload,
     iat: iat,
-    exp: iat + 300,
-    jti: crypto.randomBytes(16).toString('hex'),
-    aud: aud
+    exp: iat + 120, // Must be issued within 2 minutes
+    jti: crypto.randomUUID()
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -48,26 +47,23 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
-  const { id } = req.query;
-  if (!id) {
-    return res.status(400).json({ error: 'Missing sign_request_id' });
+  const { id, exchange_code } = req.query;
+  if (!id || !exchange_code) {
+    return res.status(400).json({ error: 'Missing sign_request_id or exchange_code' });
   }
 
-  const clientId = 'WTYhkYnUJubcEOzDokeJO4szhblsEzF4';
   const kid = 'key-1';
   const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
-  const apiBase = 'https://staging.sign.singpass.gov.sg/api/v3';
-  const apiUrl = `${apiBase}/signing-sessions/${id}/result`;
+  const apiUrl = `https://staging.sign.singpass.gov.sg/api/v3/sign-requests/${id}/signed-doc`;
 
   const jwt = createJWT({
-    sub: clientId,
-    iss: clientId
-  }, privateKey, kid, apiUrl);
+    exchange_code: exchange_code
+  }, privateKey, kid);
 
   const options = {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${jwt}`,
+      'Authorization': jwt,
       'Accept': 'application/json'
     }
   };
@@ -77,17 +73,17 @@ module.exports = async (req, res) => {
     apiRes.on('data', (chunk) => data += chunk);
     apiRes.on('end', () => {
       try {
-        const result = JSON.parse(data);
-        if (apiRes.statusCode === 200) {
-          if (result.status === 'signed') {
+        if (apiRes.headers['content-type'] && apiRes.headers['content-type'].includes('application/json')) {
+          const result = JSON.parse(data);
+          if (apiRes.statusCode === 200) {
             res.status(200).json({ status: 'signed', signed_doc_url: result.signed_doc_url });
-          } else {
+          } else if (apiRes.statusCode === 400 && result.error === 'DOCUMENT_NOT_SIGNED') {
             res.status(200).json({ status: 'pending' });
+          } else {
+            res.status(apiRes.statusCode).json(result);
           }
-        } else if (apiRes.statusCode === 202) {
-          res.status(200).json({ status: 'pending' });
         } else {
-          res.status(apiRes.statusCode).json(result);
+          res.status(apiRes.statusCode).json({ error: 'API returned non-JSON response', raw: data });
         }
       } catch (e) {
         res.status(500).json({ error: 'Failed to parse API response', raw: data });

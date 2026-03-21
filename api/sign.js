@@ -9,7 +9,7 @@ function base64UrlEncode(str) {
     .replace(/=/g, '');
 }
 
-function createJWT(payload, privateKey, kid, aud) {
+function createJWT(payload, privateKey, kid) {
   const header = {
     alg: 'RS256',
     typ: 'JWT',
@@ -20,9 +20,8 @@ function createJWT(payload, privateKey, kid, aud) {
   const fullPayload = {
     ...payload,
     iat: iat,
-    exp: iat + 300,
-    jti: crypto.randomBytes(16).toString('hex'),
-    aud: aud
+    exp: iat + 120, // Must be issued within 2 minutes
+    jti: crypto.randomUUID()
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -90,55 +89,35 @@ module.exports = async (req, res) => {
     const clientId = 'WTYhkYnUJubcEOzDokeJO4szhblsEzF4';
     const kid = 'key-1';
     const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
-    const apiBase = 'https://staging.sign.singpass.gov.sg/api/v3';
-    const apiUrl = `${apiBase}/signing-sessions`;
-    const webhookBase = process.env.WEBHOOK_BASE_URL;
-
-    const jwt = createJWT({
-      sub: clientId,
-      iss: clientId
-    }, privateKey, kid, apiUrl);
+    const apiUrl = 'https://staging.sign.singpass.gov.sg/api/v3/sign-requests';
 
     const signLocations = [];
-    for (let i = 1; i <= 20; i++) {
+    for (let i = 1; i <= Math.min(20, 20); i++) { // Limit to 20 locations
       signLocations.push({
-        page_index: i,
+        page: i,
         x: 0.72,
-        y: 0.05,
-        width: 0.25,
-        height: 0.06
+        y: 0.05
       });
     }
 
-    const payloadJson = {
+    const jwtPayload = {
+      client_id: clientId,
       doc_name: fileName,
       sign_locations: signLocations
     };
 
     if (signerNric) {
-      payloadJson.signer_uin_hash = crypto.createHash('sha256').update(signerNric).digest('hex');
+      jwtPayload.signer_uin_hash = crypto.createHash('sha256').update(signerNric.toUpperCase()).digest('hex');
     }
 
-    if (webhookBase) {
-      payloadJson.webhook_url = `${webhookBase}/api/webhook/singpass`;
-    }
-
-    const requestBoundary = '----ManusBoundary' + crypto.randomBytes(8).toString('hex');
-    const header = `--${requestBoundary}\r\nContent-Disposition: form-data; name="payload"\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payloadJson)}\r\n--${requestBoundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/pdf\r\n\r\n`;
-    const footer = `\r\n--${requestBoundary}--`;
-
-    const requestBody = Buffer.concat([
-      Buffer.from(header),
-      pdfBuffer,
-      Buffer.from(footer)
-    ]);
+    const jwt = createJWT(jwtPayload, privateKey, kid);
 
     const options = {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${jwt}`,
-        'Content-Type': `multipart/form-data; boundary=${requestBoundary}`,
-        'Content-Length': requestBody.length
+        'Authorization': jwt,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': pdfBuffer.length
       }
     };
 
@@ -147,14 +126,19 @@ module.exports = async (req, res) => {
       apiRes.on('data', (chunk) => data += chunk);
       apiRes.on('end', () => {
         try {
-          const result = JSON.parse(data);
-          if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
-            res.status(200).json({
-              sign_request_id: result.sign_request_id,
-              signing_url: result.signing_url
-            });
+          if (apiRes.headers['content-type'] && apiRes.headers['content-type'].includes('application/json')) {
+            const result = JSON.parse(data);
+            if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
+              res.status(200).json({
+                sign_request_id: result.request_id,
+                signing_url: result.signing_url,
+                exchange_code: result.exchange_code
+              });
+            } else {
+              res.status(apiRes.statusCode).json(result);
+            }
           } else {
-            res.status(apiRes.statusCode).json(result);
+            res.status(apiRes.statusCode).json({ error: 'API returned non-JSON response', raw: data });
           }
         } catch (e) {
           res.status(500).json({ error: 'Failed to parse API response', raw: data });
@@ -166,7 +150,7 @@ module.exports = async (req, res) => {
       res.status(500).json({ error: e.message });
     });
 
-    apiReq.write(requestBody);
+    apiReq.write(pdfBuffer);
     apiReq.end();
 
   } catch (err) {

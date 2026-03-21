@@ -77,6 +77,7 @@
 
         let selectedFile = null;
         let signRequestId = null;
+        let exchangeCode = null;
         let pollInterval = null;
 
         dropZone.onclick = () => fileInput.click();
@@ -139,6 +140,7 @@
 
                 if (response.ok) {
                     signRequestId = result.sign_request_id;
+                    exchangeCode = result.exchange_code;
                     statusText.textContent = 'Waiting for signature...';
                     
                     resultArea.style.display = 'block';
@@ -163,7 +165,7 @@
             if (pollInterval) clearInterval(pollInterval);
             pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`/api/status?id=${signRequestId}`);
+                    const response = await fetch(`/api/status?id=${signRequestId}&exchange_code=${exchangeCode}`);
                     const result = await response.json();
 
                     if (result.status === 'signed') {
