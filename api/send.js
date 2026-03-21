@@ -1,5 +1,25 @@
+/**
+ * POST /api/send
+ *
+ * Accepts a multipart/form-data request with a PDF file (field: "file") and an
+ * optional signer NRIC (field: "signer_nric"), creates a Singpass sign request,
+ * and returns the signing URL together with the request metadata needed to poll
+ * for completion and download the signed document.
+ *
+ * Response (200):
+ *   {
+ *     "sign_request_id": "<uuid>",
+ *     "signing_url":     "https://app.singpass.gov.sg/...",
+ *     "exchange_code":   "<code>"
+ *   }
+ */
+
 const crypto = require("crypto");
 const https = require("https");
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function base64UrlEncode(str) {
   return Buffer.from(str)
@@ -10,19 +30,14 @@ function base64UrlEncode(str) {
 }
 
 function createJWT(payload, privateKey, kid, aud) {
-  const header = {
-    alg: "ES256",
-    typ: "JWT",
-    kid: kid,
-  };
-
+  const header = { alg: "ES256", typ: "JWT", kid };
   const iat = Math.floor(Date.now() / 1000);
   const fullPayload = {
     ...payload,
-    iat: iat,
-    exp: iat + 120, // Valid for 2 minutes
+    iat,
+    exp: iat + 120,
     jti: crypto.randomUUID(),
-    aud: aud,
+    aud,
     iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
     sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
   };
@@ -42,80 +57,94 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-// Robust page count detection: use the maximum /Count value to find the root page tree node
+/**
+ * Robust page count detection.
+ * Matches ALL /Count entries in the PDF and returns the maximum value, which
+ * corresponds to the root /Pages node (sub-tree nodes have smaller counts).
+ */
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
 
-  // Match ALL /Count entries and take the largest — the root /Pages node always has the highest count
   const allCountMatches = str.match(/\/Count\s+(\d+)/g);
   if (allCountMatches && allCountMatches.length > 0) {
-    const counts = allCountMatches.map((m) => parseInt(m.match(/(\d+)/)[1], 10)).filter((n) => !isNaN(n) && n > 0);
+    const counts = allCountMatches
+      .map((m) => parseInt(m.match(/(\d+)/)[1], 10))
+      .filter((n) => !isNaN(n) && n > 0);
     if (counts.length > 0) return Math.max(...counts);
   }
 
-  // Fallback: count explicit page objects
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
-  if (pageMatches) {
-    return pageMatches.length;
-  }
+  if (pageMatches) return pageMatches.length;
 
   const simplePageMatches = str.match(/\/Page\b/g);
   if (simplePageMatches) {
     const hasPages = str.includes("/Pages");
-    return hasPages ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
+    return hasPages
+      ? Math.max(1, simplePageMatches.length - 1)
+      : simplePageMatches.length;
   }
 
   return 1;
 }
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
+    // ------------------------------------------------------------------
+    // 1. Read raw body
+    // ------------------------------------------------------------------
     const chunks = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
-    }
+    for await (const chunk of req) chunks.push(chunk);
     const body = Buffer.concat(chunks);
-    const contentType = req.headers["content-type"];
+
+    const contentType = req.headers["content-type"] || "";
     const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
-    const boundary = boundaryMatch ? (boundaryMatch[1] || boundaryMatch[2]) : null;
+    const boundary = boundaryMatch
+      ? boundaryMatch[1] || boundaryMatch[2]
+      : null;
 
     if (!boundary) {
-      return res.status(400).json({ error: "Invalid content type: boundary missing" });
+      return res
+        .status(400)
+        .json({ error: "Invalid content type: boundary missing" });
     }
 
+    // ------------------------------------------------------------------
+    // 2. Parse multipart body
+    // ------------------------------------------------------------------
     const boundaryBuffer = Buffer.from("--" + boundary);
     let pdfBuffer = null;
     let signerNric = null;
     let fileName = "document.pdf";
 
-    // Robust Buffer-based multipart parsing
     let pos = 0;
     while (pos < body.length) {
       const nextBoundary = body.indexOf(boundaryBuffer, pos);
       if (nextBoundary === -1) break;
-      
-      const partStart = nextBoundary + boundaryBuffer.length + 2; // skip boundary and \r\n
+
+      const partStart = nextBoundary + boundaryBuffer.length + 2;
       const partEnd = body.indexOf(boundaryBuffer, partStart);
       if (partEnd === -1) break;
-      
-      const part = body.slice(partStart, partEnd - 2); // remove trailing \r\n
+
+      const part = body.slice(partStart, partEnd - 2);
       const headerEnd = part.indexOf("\r\n\r\n");
       if (headerEnd !== -1) {
         const headers = part.slice(0, headerEnd).toString();
         const content = part.slice(headerEnd + 4);
-        
+
         if (headers.includes('name="file"')) {
           pdfBuffer = content;
           const filenameMatch = headers.match(/filename="([^"]+)"/);
@@ -128,9 +157,31 @@ module.exports = async (req, res) => {
     }
 
     if (!pdfBuffer || pdfBuffer.length === 0) {
-      return res.status(400).json({ error: "No PDF file provided or file is empty" });
+      return res
+        .status(400)
+        .json({ error: "No PDF file provided or file is empty" });
     }
 
+    // ------------------------------------------------------------------
+    // 3. Build sign-locations for every page
+    // ------------------------------------------------------------------
+    const detectedPageCount = getPdfPageCount(pdfBuffer);
+    const pageCount = Math.min(Math.max(detectedPageCount, 1), 100);
+
+    const signLocations = [];
+    for (let i = 1; i <= pageCount; i++) {
+      signLocations.push({
+        page: i,
+        x: 0.55,
+        y: 0.15,
+        width: 0.35,
+        height: 0.08,
+      });
+    }
+
+    // ------------------------------------------------------------------
+    // 4. Create Singpass sign request
+    // ------------------------------------------------------------------
     const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
     const kid = "key-1";
     const privateKey = `-----BEGIN PRIVATE KEY-----
@@ -141,26 +192,10 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
-    const detectedPageCount = getPdfPageCount(pdfBuffer);
-    const pageCount = Math.min(Math.max(detectedPageCount, 1), 100); // Support up to 100 pages
-
-    // Create signature locations for each page
-    // Positioning: bottom right area of the page for visibility
-    const signLocations = [];
-    for (let i = 1; i <= pageCount; i++) {
-      signLocations.push({
-        page: i,
-        x: 0.55,    // 55% from left (right side)
-        y: 0.15,    // 15% from bottom (lower area)
-        width: 0.35, // 35% width for signature box
-        height: 0.08 // 8% height for signature box
-      });
-    }
-
     const jwtPayload = {
       client_id: clientId,
       doc_name: fileName,
-      sign_locations: signLocations
+      sign_locations: signLocations,
     };
 
     if (signerNric) {
@@ -181,40 +216,38 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
       },
     };
 
+    // ------------------------------------------------------------------
+    // 5. Forward PDF to Singpass and relay the sign link
+    // ------------------------------------------------------------------
     const apiReq = https.request(apiUrl, options, (apiRes) => {
       let data = "";
       apiRes.on("data", (chunk) => (data += chunk));
       apiRes.on("end", () => {
         try {
-          if (
-            apiRes.headers["content-type"] &&
-            apiRes.headers["content-type"].includes("application/json")
-          ) {
+          const ct = apiRes.headers["content-type"] || "";
+          if (ct.includes("application/json")) {
             const result = JSON.parse(data);
             if (apiRes.statusCode >= 200 && apiRes.statusCode < 300) {
-              res.status(200).json({
+              return res.status(200).json({
                 sign_request_id: result.request_id,
                 signing_url: result.signing_url,
                 exchange_code: result.exchange_code,
               });
-            } else {
-              res.status(apiRes.statusCode).json(result);
             }
-          } else {
-            res
-              .status(apiRes.statusCode)
-              .json({ error: "API returned non-JSON response", raw: data });
+            return res.status(apiRes.statusCode).json(result);
           }
+          return res
+            .status(apiRes.statusCode)
+            .json({ error: "API returned non-JSON response", raw: data });
         } catch (e) {
-          res.status(500).json({ error: "Failed to parse API response", raw: data });
+          return res
+            .status(500)
+            .json({ error: "Failed to parse API response", raw: data });
         }
       });
     });
 
-    apiReq.on("error", (e) => {
-      res.status(500).json({ error: e.message });
-    });
-
+    apiReq.on("error", (e) => res.status(500).json({ error: e.message }));
     apiReq.write(pdfBuffer);
     apiReq.end();
   } catch (err) {
@@ -223,7 +256,5 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 };
 
 module.exports.config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false },
 };

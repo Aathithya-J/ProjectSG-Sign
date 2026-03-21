@@ -44,21 +44,23 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-// Improved robust page count detection
+// Robust page count detection: use the maximum /Count value to find the root page tree node
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
-  
-  const countMatch = str.match(/\/Count\s+(\d+)/);
-  if (countMatch) {
-    const count = parseInt(countMatch[1], 10);
-    if (!isNaN(count) && count > 0) return count;
+
+  // Match ALL /Count entries and take the largest — the root /Pages node always has the highest count
+  const allCountMatches = str.match(/\/Count\s+(\d+)/g);
+  if (allCountMatches && allCountMatches.length > 0) {
+    const counts = allCountMatches.map((m) => parseInt(m.match(/(\d+)/)[1], 10)).filter((n) => !isNaN(n) && n > 0);
+    if (counts.length > 0) return Math.max(...counts);
   }
-  
+
+  // Fallback: count explicit page objects
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
   if (pageMatches) {
     return pageMatches.length;
   }
-  
+
   const simplePageMatches = str.match(/\/Page\b/g);
   if (simplePageMatches) {
     const hasPages = str.includes("/Pages");
