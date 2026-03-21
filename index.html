@@ -114,6 +114,20 @@
 
         let selectedFile = null;
 
+        // Check for redirect back from Singpass
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestId = urlParams.get('request_id');
+            const exchangeCode = urlParams.get('exchange_code') || sessionStorage.getItem('last_exchange_code');
+            
+            if (requestId && exchangeCode) {
+                statusDiv.className = 'info';
+                statusDiv.innerHTML = '<div class="loader"></div> Resuming session, checking status...';
+                statusDiv.style.display = 'block';
+                pollStatus(requestId, exchangeCode);
+            }
+        };
+
         dropZone.onclick = () => fileInput.click();
         
         fileInput.onchange = (e) => {
@@ -178,6 +192,9 @@
                     statusDiv.textContent = 'Session created! Please sign the document via the link below.';
                     resultLink.href = result.signing_url;
                     resultLink.style.display = 'block';
+                    
+                    // Store exchange_code for redirection recovery
+                    sessionStorage.setItem('last_exchange_code', result.exchange_code);
                     
                     pollStatus(result.sign_request_id, result.exchange_code);
                 } else {
