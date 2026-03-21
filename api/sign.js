@@ -46,28 +46,24 @@ function createJWT(payload, privateKey, kid, aud) {
 function getPdfPageCount(buffer) {
   const str = buffer.toString("binary");
   
-  // Method 1: Search for /Count in Catalog/Pages
   const countMatch = str.match(/\/Count\s+(\d+)/);
   if (countMatch) {
     const count = parseInt(countMatch[1], 10);
     if (!isNaN(count) && count > 0) return count;
   }
   
-  // Method 2: Count /Type /Page entries (more reliable for some PDFs)
   const pageMatches = str.match(/\/Type\s*\/Page\b/g);
   if (pageMatches) {
     return pageMatches.length;
   }
   
-  // Method 3: Simple search for /Page\b
   const simplePageMatches = str.match(/\/Page\b/g);
   if (simplePageMatches) {
-    // Subtract 1 if /Pages is also found to avoid double counting the parent
     const hasPages = str.includes("/Pages");
     return hasPages ? Math.max(1, simplePageMatches.length - 1) : simplePageMatches.length;
   }
 
-  return 1; // Absolute fallback
+  return 1;
 }
 
 module.exports = async (req, res) => {
@@ -128,17 +124,15 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
-    // Improved page count detection
     const detectedPageCount = getPdfPageCount(pdfBuffer);
-    // Singpass V3 allows up to 20 signatures per document
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 20);
 
     const signLocations = [];
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({
         page: i,
-        x: 0.72,
-        y: 0.05,
+        x: 0.6,
+        y: 0.1,
         width: 0.25,
         height: 0.06
       });
