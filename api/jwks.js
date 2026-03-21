@@ -11,12 +11,13 @@ module.exports = (req, res) => {
   const jwks = {
     "keys": [
       {
-        "kty": "RSA",
+        "kty": "EC",
         "use": "sig",
-        "alg": "RS256",
+        "crv": "P-256",
         "kid": "key-1",
-        "n": "4F0GrqNRE3SuCViY56VoOUPZ1IJPSQG8xjfAwGetbH-E4bVLh6FdcFV6giESAgc6E7xNQLVLRv2vw9zOFjNqHTbVkFhfJfiNJRyPUN_M9wqu6BxruwRZei9sD686SH5sUfFJ76TMUfU8mNROt21a8gDI0qDgNI8u966V911xnzub1n21j6bC8SyMybtRTVLt_UsjUMlbEkJ0O1F2MN567tjFL39ocgF3FhwYPx2B6_8N3ox2OjlzKluKB_sb1PXtV2DqPoB8uf7MpytwD2hF_PJkcaZF5JwZIO7-Gm4ZMrEHsyUqMspLGNbLSf87NanO-wQEzZJKKGQjGefgEKAGZQ",
-        "e": "AQAB"
+        "x": "n0DpaD-GFo0vqReWllbLIRV2oT-I_W0KLR2a3WohKaE",
+        "y": "ZO1xoT-PGqOFTy3SljpjLs8UZjuXSMIVM7C0iPqkLnQ",
+        "alg": "ES256"
       }
     ]
   };
