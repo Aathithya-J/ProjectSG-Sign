@@ -193,8 +193,9 @@
                     resultLink.href = result.signing_url;
                     resultLink.style.display = 'block';
                     
-                    // Store exchange_code for redirection recovery
+                    // Store exchange_code and filename for recovery
                     sessionStorage.setItem('last_exchange_code', result.exchange_code);
+                    sessionStorage.setItem('last_filename', selectedFile.name);
                     
                     pollStatus(result.sign_request_id, result.exchange_code);
                 } else {
@@ -225,7 +226,19 @@
                         statusDiv.textContent = 'Document signed successfully!';
                         resultLink.style.display = 'none';
                         downloadBtn.style.display = 'block';
-                        downloadBtn.onclick = () => window.open(result.signed_doc_url, '_blank');
+                        
+                        downloadBtn.onclick = () => {
+                            const link = document.createElement('a');
+                            link.href = result.signed_doc_url;
+                            const originalName = sessionStorage.getItem('last_filename') || 'signed_document.pdf';
+                            const signedName = originalName.toLowerCase().endsWith('.pdf') 
+                                ? originalName.replace(/\.pdf$/i, '_signed.pdf')
+                                : originalName + '_signed.pdf';
+                            link.download = signedName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        };
                     } else if (result.status !== 'pending') {
                         clearInterval(interval);
                         statusDiv.className = 'error';
