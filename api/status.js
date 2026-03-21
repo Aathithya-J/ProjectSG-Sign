@@ -56,8 +56,8 @@ module.exports = async (req, res) => {
   const clientId = 'WTYhkYnUJubcEOzDokeJO4szhblsEzF4';
   const kid = 'key-1';
   const privateKey = process.env.SINGPASS_PRIVATE_KEY_PEM;
-  const apiBase = 'https://stg-api.sign.singpass.gov.sg';
-  const apiUrl = `${apiBase}/v3/signing-sessions/${id}/result`;
+  const apiBase = 'https://staging.sign.singpass.gov.sg/api/v3';
+  const apiUrl = `${apiBase}/signing-sessions/${id}/result`;
 
   const jwt = createJWT({
     sub: clientId,
