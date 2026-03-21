@@ -38,18 +38,6 @@ function createJWT(payload, privateKey, kid, aud) {
   return `${signatureInput}.${signature}`;
 }
 
-function httpsGet(url) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        resolve({ statusCode: res.statusCode, headers: res.headers, data });
-      });
-    }).on("error", reject);
-  });
-}
-
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -92,103 +80,90 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     },
   };
 
-  try {
-    const apiReq = https.request(apiUrl, options, async (apiRes) => {
-      let data = "";
-      apiRes.on("data", (chunk) => (data += chunk));
-      apiRes.on("end", async () => {
+  const apiReq = https.request(apiUrl, options, (apiRes) => {
+    let data = "";
+    
+    apiRes.on("data", (chunk) => {
+      data += chunk;
+    });
+
+    apiRes.on("end", () => {
+      // Check if response is not 200
+      if (apiRes.statusCode !== 200) {
+        res.setHeader("Content-Type", "application/json");
         try {
-          const contentType = apiRes.headers["content-type"] || "";
-
-          // If we get a non-200 response, return the error
-          if (apiRes.statusCode !== 200) {
-            res.setHeader("Content-Type", "application/json");
-            let errorMsg = "Failed to retrieve signed document";
-            
-            if (contentType.includes("application/json")) {
-              try {
-                const errorData = JSON.parse(data);
-                errorMsg = errorData.error || errorMsg;
-              } catch (e) {
-                // Ignore parse errors
-              }
-            }
-
-            res.status(apiRes.statusCode).json({ error: errorMsg });
-            return;
-          }
-
-          // Parse the response to get the signed_doc_url
-          let signedDocUrl = null;
-          if (contentType.includes("application/json")) {
-            try {
-              const result = JSON.parse(data);
-              signedDocUrl = result.signed_doc_url;
-            } catch (e) {
-              res.status(500).json({ error: "Failed to parse API response" });
-              return;
-            }
-          }
-
-          if (!signedDocUrl) {
-            res.status(400).json({ error: "No signed document URL in response" });
-            return;
-          }
-
-          // Now fetch the actual PDF from the signed_doc_url
-          try {
-            const pdfResponse = await httpsGet(signedDocUrl);
-
-            if (pdfResponse.statusCode !== 200) {
-              res.status(pdfResponse.statusCode).json({
-                error: "Failed to download signed PDF from storage",
-              });
-              return;
-            }
-
-            const pdfContentType = pdfResponse.headers["content-type"] || "";
-            if (!pdfContentType.includes("application/pdf")) {
-              res.status(400).json({
-                error: "Expected PDF but received " + pdfContentType,
-              });
-              return;
-            }
-
-            // Stream the PDF to the client
-            res.setHeader("Content-Type", "application/pdf");
-            res.setHeader("Content-Disposition", "attachment; filename=signed_document.pdf");
-            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-            res.end(pdfResponse.data);
-          } catch (err) {
-            console.error("Error fetching PDF from signed_doc_url:", err);
-            res.status(500).json({
-              error: "Failed to download PDF from storage",
-              details: err.message,
-            });
-          }
-        } catch (err) {
-          console.error("Error processing API response:", err);
-          res.status(500).json({ error: "Failed to process API response" });
+          const errorData = JSON.parse(data);
+          res.status(apiRes.statusCode).json(errorData);
+        } catch (e) {
+          res.status(apiRes.statusCode).json({ error: data });
         }
+        return;
+      }
+
+      // Parse JSON response to get signed_doc_url
+      let signedDocUrl = null;
+      try {
+        const result = JSON.parse(data);
+        signedDocUrl = result.signed_doc_url;
+      } catch (e) {
+        res.setHeader("Content-Type", "application/json");
+        res.status(500).json({ error: "Failed to parse API response" });
+        return;
+      }
+
+      if (!signedDocUrl) {
+        res.setHeader("Content-Type", "application/json");
+        res.status(400).json({ error: "No signed document URL in response" });
+        return;
+      }
+
+      // Fetch the PDF from the signed_doc_url using streaming
+      https.get(signedDocUrl, (pdfRes) => {
+        // Check status code
+        if (pdfRes.statusCode !== 200) {
+          res.setHeader("Content-Type", "application/json");
+          res.status(pdfRes.statusCode).json({ error: "Failed to download PDF from storage" });
+          return;
+        }
+
+        // Check content type
+        const pdfContentType = pdfRes.headers["content-type"] || "";
+        if (!pdfContentType.includes("application/pdf") && !pdfContentType.includes("application/octet-stream")) {
+          res.setHeader("Content-Type", "application/json");
+          res.status(400).json({ error: "Expected PDF but received " + pdfContentType });
+          return;
+        }
+
+        // Stream the PDF directly to the client
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "attachment; filename=signed_document.pdf");
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        
+        // Pipe the response directly - this preserves binary data
+        pdfRes.pipe(res);
+
+        pdfRes.on("error", (err) => {
+          console.error("Error streaming PDF:", err);
+          if (!res.headersSent) {
+            res.setHeader("Content-Type", "application/json");
+            res.status(500).json({ error: "Error streaming PDF: " + err.message });
+          }
+        });
+      }).on("error", (err) => {
+        console.error("Error fetching PDF from signed_doc_url:", err);
+        res.setHeader("Content-Type", "application/json");
+        res.status(500).json({ error: "Failed to download PDF from storage: " + err.message });
       });
     });
+  });
 
-    apiReq.on("error", (e) => {
-      console.error("API request error:", e);
-      res.status(500).json({
-        error: "Failed to connect to signing service",
-        details: e.message,
-      });
-    });
+  apiReq.on("error", (e) => {
+    console.error("API request error:", e);
+    res.setHeader("Content-Type", "application/json");
+    res.status(500).json({ error: "Failed to connect to signing service: " + e.message });
+  });
 
-    apiReq.end();
-  } catch (err) {
-    console.error("Unexpected error:", err);
-    res.status(500).json({
-      error: "Unexpected error",
-      details: err.message,
-    });
-  }
+  apiReq.end();
 };
 
 module.exports.config = {
