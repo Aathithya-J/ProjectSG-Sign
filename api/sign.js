@@ -165,7 +165,6 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
         height: 0.02 // 2% height for signature box (even smaller)
       });
       console.log(`Page ${i}: x=${signLocations[i-1].x}, y=${signLocations[i-1].y}, width=${signLocations[i-1].width}, height=${signLocations[i-1].height}`);
-      });
     }
 
     const jwtPayload = {

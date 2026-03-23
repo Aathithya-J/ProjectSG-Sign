@@ -3,522 +3,431 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document Signing Result</title>
+    <title>Signing Result — Sign with Singpass</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
+        :root {
+            --sp-red: #F4333D;
+            --sp-red-hover: #B0262D;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --bg-page: #f3f4f6;
+            --bg-card: #ffffff;
+            --success-bg: #f0fdf4;
+            --success-text: #166534;
+            --success-border: #bbf7d0;
+            --error-bg: #fef2f2;
+            --error-text: #991b1b;
+            --error-border: #fecaca;
+            --info-bg: #eff6ff;
+            --info-text: #1e40af;
+            --info-border: #bfdbfe;
+            --warning-bg: #fffbeb;
+            --warning-text: #92400e;
+            --warning-border: #fde68a;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+            --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.08);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-page);
+            min-height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            background-color: #f4f7f6;
-            padding: 20px;
+            padding: 24px 16px;
+            color: var(--text-primary);
         }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            width: 100%;
-            max-width: 500px;
+
+        /* ── Brand header ── */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
         }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #d71920;
-            border-radius: 50%;
+
+        .brand-icon {
             width: 40px;
             height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        .icon.success { color: #2e7d32; }
-        .icon.error { color: #d71920; }
-        .icon.cancelled { color: #f57c00; }
-        .icon.expired { color: #6f42c1; }
-        
-        h2 { 
-            color: #333; 
-            margin-bottom: 1rem; 
-            margin-top: 0;
-            font-size: 1.8rem;
-        }
-        .subtitle {
-            color: #666;
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-        }
-        p { 
-            color: #666; 
-            line-height: 1.6; 
-            margin: 1rem 0;
-            font-size: 0.95rem;
-        }
-        .instructions {
-            background: #f5f5f5;
-            padding: 1rem;
-            border-radius: 6px;
-            margin: 1.5rem 0;
-            text-align: left;
-            border-left: 4px solid #d71920;
-        }
-        .instructions h4 {
-            color: #333;
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-        }
-        .instructions ol {
-            margin-left: 1.5rem;
-            color: #666;
-            font-size: 0.9rem;
-        }
-        .instructions li {
-            margin-bottom: 0.5rem;
-            line-height: 1.5;
-        }
-        .button-group {
+            background: var(--sp-red);
+            border-radius: 10px;
             display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            flex-wrap: wrap;
+            align-items: center;
             justify-content: center;
         }
-        button {
-            padding: 0.75rem 1.5rem;
+
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: white;
+        }
+
+        .brand-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.3px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            width: 100%;
+            max-width: 480px;
+            padding: 40px 32px 32px;
+            text-align: center;
+        }
+
+        /* ── Loader ── */
+        .loader-wrap {
+            margin-bottom: 24px;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #f3f3f3;
+            border-top-color: var(--sp-red);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── State icon ── */
+        .state-icon {
+            display: none;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .state-icon.success { background: #dcfce7; color: #16a34a; display: flex; }
+        .state-icon.error   { background: #fee2e2; color: #dc2626; display: flex; }
+        .state-icon.warning { background: #fef3c7; color: #d97706; display: flex; }
+        .state-icon.expired { background: #ede9fe; color: #7c3aed; display: flex; }
+
+        /* ── Typography ── */
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            letter-spacing: -0.4px;
+        }
+
+        .card-subtitle {
+            font-size: 13.5px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        /* ── Status box ── */
+        #status {
+            padding: 13px 15px;
+            border-radius: var(--radius-sm);
+            display: none;
+            font-size: 13px;
+            line-height: 1.6;
+            border: 1px solid;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        #status.info    { background: var(--info-bg);    color: var(--info-text);    border-color: var(--info-border); }
+        #status.error   { background: var(--error-bg);   color: var(--error-text);   border-color: var(--error-border); }
+        #status.success { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
+        #status.warning { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+
+        /* ── Buttons ── */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 16px;
             border: none;
-            border-radius: 6px;
-            font-size: 1rem;
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-            flex: 1;
-            min-width: 150px;
+            transition: background 0.15s;
         }
-        #download-btn {
-            background-color: #2e7d32;
+
+        .btn-primary {
+            background: #059669;
             color: white;
         }
-        #download-btn:hover {
-            background-color: #1b5e20;
-        }
-        #download-btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        #retry-btn {
-            background-color: #d71920;
+
+        .btn-primary:hover { background: #047857; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-danger {
+            background: var(--sp-red);
             color: white;
         }
-        #retry-btn:hover {
-            background-color: #b3151a;
+
+        .btn-danger:hover { background: var(--sp-red-hover); }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
-        #back-btn {
-            background-color: #666;
-            color: white;
-        }
-        #back-btn:hover {
-            background-color: #444;
-        }
-        #status {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            border-radius: 6px;
-            display: none;
-            border-left: 4px solid;
-        }
-        .info { 
-            background: #e3f2fd; 
-            color: #0d47a1;
-            border-left-color: #0d47a1;
-        }
-        .error { 
-            background: #ffebee; 
-            color: #b71c1c;
-            border-left-color: #b71c1c;
-        }
-        .success { 
-            background: #e8f5e9; 
-            color: #1b5e20;
-            border-left-color: #1b5e20;
-        }
-        .warning {
-            background: #fff3e0;
-            color: #e65100;
-            border-left-color: #e65100;
-        }
-        
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            animation: fadeIn 0.3s;
-        }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        .modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            animation: slideIn 0.3s;
-        }
-        @keyframes slideIn { 
-            from { 
-                transform: translateY(-50px);
-                opacity: 0;
-            } 
-            to { 
-                transform: translateY(0);
-                opacity: 1;
-            } 
-        }
-        
-        .modal-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        .modal-title {
-            font-size: 1.5rem;
-            color: #333;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-        .modal-message {
-            color: #666;
-            line-height: 1.6;
-            margin-bottom: 1.5rem;
-            font-size: 0.95rem;
-        }
-        .modal-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        .modal-buttons button {
-            min-width: 120px;
+
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        /* ── Responsive ── */
+        @media (max-width: 520px) {
+            .card { padding: 32px 20px 24px; }
+            .card-title { font-size: 20px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="loader" id="loader"></div>
-        <div class="icon" id="icon" style="display: none;"></div>
-        <h2 id="title">Processing...</h2>
-        <p class="subtitle" id="subtitle">Please wait while we verify your signing request...</p>
-        
+
+    <div class="brand">
+        <div class="brand-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
+            </svg>
+        </div>
+        <span class="brand-name">PDF Signer</span>
+    </div>
+
+    <div class="card">
+        <div class="loader-wrap" id="loader-wrap">
+            <div class="loader"></div>
+        </div>
+
+        <div class="state-icon" id="state-icon"></div>
+
+        <h1 class="card-title" id="card-title">Verifying your signature…</h1>
+        <p class="card-subtitle" id="card-subtitle">Please wait while we confirm your signing request with Singpass.</p>
+
         <div id="status"></div>
-        <div id="instructions-container"></div>
-        
-        <div class="button-group" id="button-group" style="display: none;">
-            <button id="download-btn" style="display: none;">Download Signed PDF</button>
-            <button id="retry-btn" style="display: none;">Try Again</button>
-            <button id="back-btn" style="display: none;">Back to Upload</button>
-        </div>
-    </div>
 
-    <!-- Error Modal -->
-    <div id="errorModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-icon error">⚠️</div>
-            <div class="modal-title" id="errorModalTitle">Signing Failed</div>
-            <div class="modal-message" id="errorModalMessage">An error occurred during the signing process.</div>
-            <div class="modal-buttons">
-                <button id="errorModalRetry" class="modal-btn">Try Again</button>
-                <button id="errorModalBack" class="modal-btn" style="background-color: #666; color: white;">Back</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Cancelled Modal -->
-    <div id="cancelledModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-icon cancelled">⊘</div>
-            <div class="modal-title">Signing Cancelled</div>
-            <div class="modal-message">You cancelled the signing process. Your document was not signed.</div>
-            <div class="modal-buttons">
-                <button id="cancelledRetry" class="modal-btn" style="background-color: #d71920; color: white;">Sign Again</button>
-                <button id="cancelledBack" class="modal-btn" style="background-color: #666; color: white;">Back to Upload</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Expired Session Modal -->
-    <div id="expiredModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-icon expired">⏱️</div>
-            <div class="modal-title">Session Expired</div>
-            <div class="modal-message">Your signing session has expired. Please start the signing process again.</div>
-            <div class="modal-buttons">
-                <button id="expiredRetry" class="modal-btn" style="background-color: #d71920; color: white;">Start Over</button>
-                <button id="expiredBack" class="modal-btn" style="background-color: #666; color: white;">Back to Upload</button>
-            </div>
+        <div class="btn-group" id="btn-group" style="display: none;">
+            <button class="btn btn-primary" id="download-btn" style="display:none;">⬇ Download Signed PDF</button>
+            <button class="btn btn-danger"  id="retry-btn"   style="display:none;">Try Again</button>
+            <button class="btn btn-secondary" id="back-btn"  style="display:none;">Back to Upload</button>
         </div>
     </div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const requestId = urlParams.get('request_id') || urlParams.get('sign_request_id')
-                          || localStorage.getItem('last_request_id');
+        const urlParams    = new URLSearchParams(window.location.search);
+        const requestId    = urlParams.get('request_id') || urlParams.get('sign_request_id') || localStorage.getItem('last_request_id');
         const exchangeCode = localStorage.getItem('last_exchange_code');
-        const statusDiv = document.getElementById('status');
-        const loader = document.getElementById('loader');
-        const icon = document.getElementById('icon');
-        const buttonGroup = document.getElementById('button-group');
+
+        const loaderWrap  = document.getElementById('loader-wrap');
+        const stateIcon   = document.getElementById('state-icon');
+        const cardTitle   = document.getElementById('card-title');
+        const cardSubtitle= document.getElementById('card-subtitle');
+        const statusDiv   = document.getElementById('status');
+        const btnGroup    = document.getElementById('btn-group');
         const downloadBtn = document.getElementById('download-btn');
-        const retryBtn = document.getElementById('retry-btn');
-        const backBtn = document.getElementById('back-btn');
-        const title = document.getElementById('title');
-        const subtitle = document.getElementById('subtitle');
-        const instructionsContainer = document.getElementById('instructions-container');
+        const retryBtn    = document.getElementById('retry-btn');
+        const backBtn     = document.getElementById('back-btn');
 
-        // Modal elements
-        const errorModal = document.getElementById('errorModal');
-        const cancelledModal = document.getElementById('cancelledModal');
-        const expiredModal = document.getElementById('expiredModal');
-
-        let signedDocUrl = null;
-
-        // Check for error status in URL
+        // ── Check URL error params ────────────────────────────────────────────
         function checkErrorStatus() {
             const status = urlParams.get('status');
-            const error = urlParams.get('error');
-
-            if (status === 'cancelled') {
-                showCancelledModal();
+            const error  = urlParams.get('error');
+            if (status === 'cancelled' || error === 'cancelled') {
+                showCancelled();
                 return true;
             }
             if (status === 'failed' || error) {
-                const errorMsg = error || 'Signing process failed. Please try again.';
-                showErrorModal('Signing Failed', errorMsg);
+                showError('Signing Failed', error || 'The signing process failed. Please try again.');
                 return true;
             }
             return false;
         }
 
-        // Fetch the signed document URL from the status API
+        // ── Fetch signed document ─────────────────────────────────────────────
         async function fetchSignedDocument() {
-            if (checkErrorStatus()) {
-                return;
-            }
+            if (checkErrorStatus()) return;
 
             if (!requestId || !exchangeCode) {
-                showErrorModal('Missing Information', 'Missing request ID or exchange code. Please go back and try again.');
+                showError('Missing Information', 'Missing request ID or exchange code. Please go back and try again.');
                 return;
             }
 
             try {
                 const response = await fetch(`/api/status?id=${requestId}&exchange_code=${exchangeCode}`);
-                const result = await response.json();
 
-                if (result.status === 'signed' && result.signed_doc_url) {
-                    signedDocUrl = result.signed_doc_url;
+                let result;
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    result = { error: 'Non-JSON response from status API' };
+                }
+
+                if (result.status === 'signed') {
                     showDownloadUI();
                 } else if (result.status === 'pending') {
-                    showErrorModal('Still Processing', 'Document is still being processed. Please wait a moment and refresh.');
+                    showError('Still Processing', 'Your document is still being processed. Please wait a moment and refresh the page.');
                 } else if (result.status === 'cancelled') {
-                    showCancelledModal();
+                    showCancelled();
                 } else if (result.status === 'expired') {
-                    showExpiredModal();
+                    showExpired();
                 } else {
-                    const errorMsg = result.error || 'Unknown error occurred';
-                    showErrorModal('Signing Failed', 'Failed to retrieve signed document: ' + errorMsg);
+                    showError('Signing Failed', 'Failed to retrieve signed document: ' + (result.error || 'Unknown error'));
                 }
             } catch (err) {
-                showErrorModal('Connection Error', 'Error fetching signed document: ' + err.message);
+                showError('Connection Error', 'Error fetching signed document: ' + err.message);
             }
         }
 
+        // ── UI states ─────────────────────────────────────────────────────────
+        function hideLoader() {
+            loaderWrap.style.display = 'none';
+        }
+
         function showDownloadUI() {
-            loader.style.display = 'none';
-            icon.style.display = 'block';
-            icon.textContent = '✓';
-            icon.className = 'icon success';
-            title.textContent = 'Document Signed Successfully!';
-            subtitle.textContent = 'Your document has been signed via Singpass.';
-            buttonGroup.style.display = 'flex';
+            hideLoader();
+            stateIcon.textContent = '✓';
+            stateIcon.className   = 'state-icon success';
+            cardTitle.textContent = 'Document Signed!';
+            cardSubtitle.textContent = 'Your document has been signed successfully via Singpass.';
+
+            statusDiv.className   = 'success';
+            statusDiv.textContent = 'The signed PDF has been emailed to info@project.sg.';
+            statusDiv.style.display = 'block';
+
+            btnGroup.style.display   = 'flex';
             downloadBtn.style.display = 'block';
 
             downloadBtn.onclick = async () => {
-                downloadBtn.disabled = true;
-                downloadBtn.textContent = 'Downloading...';
+                downloadBtn.disabled    = true;
+                downloadBtn.textContent = 'Downloading…';
                 try {
-                    const response = await fetch(`/api/download?id=${requestId}&exchange_code=${exchangeCode}`);
-                    
-                    const contentType = response.headers.get('content-type') || '';
-                    if (contentType.includes('application/json')) {
-                        const errorData = await response.json();
-                        let errorMsg = errorData.error || 'Download failed';
-                        if (errorData.description) {
-                            errorMsg += ': ' + errorData.description;
-                        }
-                        throw new Error(errorMsg);
+                    const res = await fetch(`/api/download?id=${requestId}&exchange_code=${exchangeCode}`);
+                    const ct  = res.headers.get('content-type') || '';
+
+                    if (ct.includes('application/json')) {
+                        const err = await res.json();
+                        throw new Error(err.error || 'Download failed');
                     }
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: Failed to download document`);
-                    }
-                    
-                    if (!contentType.includes('application/pdf')) {
-                        throw new Error('Invalid response: Expected PDF file');
-                    }
-                    
-                    const blob = await response.blob();
-                    
-                    if (blob.size === 0) {
-                        throw new Error('Downloaded file is empty');
-                    }
-                    if (!blob.type.includes('application/pdf')) {
-                        throw new Error('Downloaded file is not a valid PDF');
-                    }
-                    
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    if (!ct.includes('application/pdf')) throw new Error('Invalid response: expected PDF');
+
+                    const blob = await res.blob();
+                    if (blob.size === 0) throw new Error('Downloaded file is empty');
+
                     const blobUrl = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = blobUrl;
-                    
-                    const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
-                    const signedName = originalName.toLowerCase().endsWith('.pdf') 
-                        ? originalName.replace(/\.pdf$/i, '_signed.pdf')
-                        : originalName + '_signed.pdf';
-                    link.download = signedName;
+                    const link    = document.createElement('a');
+                    link.href     = blobUrl;
+                    const orig    = localStorage.getItem('last_filename') || 'document.pdf';
+                    link.download = orig.replace(/\.pdf$/i, '_signed.pdf');
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(blobUrl);
-                    
+
                     localStorage.removeItem('last_exchange_code');
                     localStorage.removeItem('last_request_id');
                     localStorage.removeItem('last_filename');
-                    
-                    downloadBtn.textContent = 'Download Signed PDF';
-                    downloadBtn.disabled = false;
                 } catch (err) {
-                    statusDiv.className = 'error';
+                    statusDiv.className   = 'error';
                     statusDiv.textContent = 'Download failed: ' + err.message;
                     statusDiv.style.display = 'block';
-                    downloadBtn.textContent = 'Download Signed PDF';
-                    downloadBtn.disabled = false;
+                } finally {
+                    downloadBtn.disabled    = false;
+                    downloadBtn.textContent = '⬇ Download Signed PDF';
                 }
             };
         }
 
-        function showErrorModal(errorTitle, errorMsg) {
-            loader.style.display = 'none';
-            icon.style.display = 'block';
-            icon.textContent = '✕';
-            icon.className = 'icon error';
-            title.textContent = errorTitle;
-            subtitle.textContent = '';
-            
-            statusDiv.className = 'error';
-            statusDiv.textContent = errorMsg;
+        function showError(title, msg) {
+            hideLoader();
+            stateIcon.textContent = '✕';
+            stateIcon.className   = 'state-icon error';
+            cardTitle.textContent = title;
+            cardSubtitle.textContent = '';
+
+            statusDiv.className   = 'error';
+            statusDiv.textContent = msg;
             statusDiv.style.display = 'block';
-            
-            buttonGroup.style.display = 'flex';
-            retryBtn.style.display = 'block';
-            backBtn.style.display = 'block';
 
-            retryBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
-
-            backBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
+            btnGroup.style.display  = 'flex';
+            retryBtn.style.display  = 'block';
+            backBtn.style.display   = 'block';
+            wireBackButtons();
         }
 
-        function showCancelledModal() {
-            loader.style.display = 'none';
-            icon.style.display = 'block';
-            icon.textContent = '⊘';
-            icon.className = 'icon cancelled';
-            title.textContent = 'Signing Cancelled';
-            subtitle.textContent = 'You cancelled the signing process.';
-            
-            statusDiv.className = 'warning';
-            statusDiv.textContent = 'Your document was not signed. You can try again anytime.';
+        function showCancelled() {
+            hideLoader();
+            stateIcon.textContent = '⊘';
+            stateIcon.className   = 'state-icon warning';
+            cardTitle.textContent = 'Signing Cancelled';
+            cardSubtitle.textContent = 'You cancelled the signing process. Your document was not signed.';
+
+            statusDiv.className   = 'warning';
+            statusDiv.textContent = 'You can start the signing process again at any time.';
             statusDiv.style.display = 'block';
-            
-            buttonGroup.style.display = 'flex';
-            retryBtn.style.display = 'block';
-            backBtn.style.display = 'block';
 
-            retryBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
-
-            backBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
+            btnGroup.style.display  = 'flex';
+            retryBtn.style.display  = 'block';
+            backBtn.style.display   = 'block';
+            wireBackButtons();
         }
 
-        function showExpiredModal() {
-            loader.style.display = 'none';
-            icon.style.display = 'block';
-            icon.textContent = '⏱️';
-            icon.className = 'icon expired';
-            title.textContent = 'Session Expired';
-            subtitle.textContent = 'Your signing session has expired.';
-            
-            statusDiv.className = 'warning';
-            statusDiv.textContent = 'Your signing session has expired. Please start the process again.';
+        function showExpired() {
+            hideLoader();
+            stateIcon.textContent = '⏱';
+            stateIcon.className   = 'state-icon expired';
+            cardTitle.textContent = 'Session Expired';
+            cardSubtitle.textContent = 'Your signing session has expired.';
+
+            statusDiv.className   = 'warning';
+            statusDiv.textContent = 'Please start the signing process again.';
             statusDiv.style.display = 'block';
-            
-            buttonGroup.style.display = 'flex';
-            retryBtn.style.display = 'block';
-            backBtn.style.display = 'block';
 
-            retryBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
-
-            backBtn.onclick = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
+            btnGroup.style.display  = 'flex';
+            retryBtn.style.display  = 'block';
+            backBtn.style.display   = 'block';
+            wireBackButtons();
         }
 
-        // Fetch signed document when page loads
-        window.onload = () => {
-            fetchSignedDocument();
-        };
+        function wireBackButtons() {
+            const clearAndGo = () => {
+                localStorage.removeItem('last_exchange_code');
+                localStorage.removeItem('last_request_id');
+                localStorage.removeItem('last_filename');
+                window.location.href = '/';
+            };
+            retryBtn.onclick = clearAndGo;
+            backBtn.onclick  = clearAndGo;
+        }
+
+        window.onload = () => fetchSignedDocument();
     </script>
 </body>
 </html>
