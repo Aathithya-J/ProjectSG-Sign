@@ -4,15 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Singpass PDF Signer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #d71920;
             --primary-hover: #b3151a;
             --bg: #f4f7f6;
             --text: #333;
+            --singpass-red: #F4333D;
+            --singpass-red-hover: #B0262D;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             display: flex;
@@ -24,68 +27,100 @@
         }
         .container {
             background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             text-align: center;
         }
-        h1 { margin-top: 0; color: var(--primary); font-size: 1.5rem; }
+        h1 { margin-top: 0; color: var(--primary); font-size: 1.75rem; font-weight: 700; }
         .drop-zone {
             border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 2rem;
+            border-radius: 12px;
+            padding: 2.5rem;
             margin: 1.5rem 0;
             cursor: pointer;
-            transition: border-color 0.3s;
+            transition: all 0.3s;
             background-color: #fafafa;
         }
-        .drop-zone.hover { border-color: var(--primary); background: #fff5f5; }
-        .input-group { margin-bottom: 1rem; text-align: left; }
-        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; }
+        .drop-zone.hover { border-color: var(--primary); background: #fff5f5; transform: scale(1.02); }
+        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; color: #555; }
         input[type="text"] {
             width: 100%;
-            padding: 0.75rem;
+            padding: 0.85rem;
             border: 1px solid #ddd;
-            border-radius: 6px;
+            border-radius: 8px;
             box-sizing: border-box;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: border-color 0.3s;
         }
-        button {
+        input[type="text"]:focus { outline: none; border-color: var(--primary); }
+        
+        /* Official Singpass Button Styles */
+        .singpass-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
             padding: 0.75rem;
-            background-color: var(--primary);
+            background-color: var(--singpass-red);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .singpass-button:hover { background-color: var(--singpass-red-hover); }
+        .singpass-button:active { transform: scale(0.98); }
+        .singpass-button:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
+        .singpass-logo {
+            height: 24px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        
+        #status { margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: none; font-size: 0.95rem; line-height: 1.5; }
+        .info { background: #e3f2fd; color: #0d47a1; border: 1px solid #bbdefb; }
+        .error { background: #ffebee; color: #b71c1c; text-align: left; border: 1px solid #ffcdd2; }
+        .success { background: #e8f5e9; color: #1b5e20; border: 1px solid #c8e6c9; }
+        .error-title { font-weight: 700; margin-bottom: 8px; }
+        .error-detail { font-size: 0.8rem; font-family: 'Courier New', Courier, monospace; white-space: pre-wrap; word-break: break-all; margin-top: 8px; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px; }
+        
+        #download-btn { 
+            margin-top: 1rem; 
+            background-color: #2e7d32; 
+            width: 100%;
+            padding: 0.85rem;
+            color: white;
+            border: none;
+            border-radius: 8px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             transition: background 0.3s;
         }
-        button:hover { background-color: var(--primary-hover); }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #status { margin-top: 1.5rem; padding: 1rem; border-radius: 6px; display: none; }
-        .info { background: #e3f2fd; color: #0d47a1; }
-        .error { background: #ffebee; color: #b71c1c; text-align: left; }
-        .success { background: #e8f5e9; color: #1b5e20; }
-        .error-title { font-weight: bold; margin-bottom: 5px; }
-        .error-detail { font-size: 0.85rem; font-family: monospace; white-space: pre-wrap; word-break: break-all; margin-top: 5px; background: rgba(0,0,0,0.05); padding: 5px; border-radius: 4px; }
-        #result-link { display: block; margin-top: 1rem; color: var(--primary); font-weight: bold; text-decoration: none; word-break: break-all; }
-        #result-link:hover { text-decoration: underline; }
-        #download-btn { margin-top: 1rem; background-color: #2e7d32; }
-        .file-info { font-size: 0.85rem; color: #666; margin-top: 0.5rem; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 10px; }
+        #download-btn:hover { background-color: #1b5e20; }
+        
+        .file-info { font-size: 0.85rem; color: #666; margin-top: 0.75rem; font-weight: 500; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid var(--primary); border-radius: 50%; width: 22px; height: 22px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 12px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Singpass PDF Signer</h1>
-        <p>Upload a PDF to sign via Singpass Sign V3</p>
+        <p style="color: #666; margin-bottom: 2rem;">Securely sign your PDF documents</p>
         
         <div class="drop-zone" id="drop-zone">
-            Drag & drop PDF here or click to select
+            <div style="font-weight: 600; color: #444;">Drag & drop PDF here</div>
+            <div style="font-size: 0.85rem; color: #888; margin-top: 4px;">or click to select file</div>
             <input type="file" id="file-input" accept="application/pdf" style="display: none;">
             <div id="file-name" class="file-info">No file selected</div>
         </div>
@@ -95,10 +130,12 @@
             <input type="text" id="signer-nric" placeholder="e.g. S1234567A">
         </div>
 
-        <button id="sign-btn" disabled>Sign Document</button>
+        <!-- Official Singpass Button -->
+        <button id="sign-btn" class="singpass-button" disabled aria-label="Sign with Singpass">
+            Sign with <img src="https://www.singpass.gov.sg/assets/img/singpass-logo-white.svg" alt="Singpass" class="singpass-logo">
+        </button>
 
         <div id="status"></div>
-        <a id="result-link" target="_blank" style="display: none;">Go to Singpass to Sign</a>
         <button id="download-btn" style="display: none;">Download Signed PDF</button>
     </div>
 
@@ -109,7 +146,6 @@
         const signBtn = document.getElementById('sign-btn');
         const nricInput = document.getElementById('signer-nric');
         const statusDiv = document.getElementById('status');
-        const resultLink = document.getElementById('result-link');
         const downloadBtn = document.getElementById('download-btn');
 
         let selectedFile = null;
@@ -117,9 +153,7 @@
         // Check for redirect back from Singpass
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
-            // request_id may come from the URL (passed by signed.html) or from localStorage as a fallback
             const requestId = urlParams.get('request_id') || localStorage.getItem('last_request_id');
-            // exchange_code may come from the URL or from localStorage (persists across external redirects)
             const exchangeCode = urlParams.get('exchange_code') || localStorage.getItem('last_exchange_code');
 
             if (requestId && exchangeCode) {
@@ -162,7 +196,6 @@
             fileNameDisplay.textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
             signBtn.disabled = false;
             statusDiv.style.display = 'none';
-            resultLink.style.display = 'none';
             downloadBtn.style.display = 'none';
         }
 
@@ -173,7 +206,6 @@
             statusDiv.className = 'info';
             statusDiv.innerHTML = '<div class="loader"></div> Initiating signing session...';
             statusDiv.style.display = 'block';
-            resultLink.style.display = 'none';
 
             const formData = new FormData();
             formData.append('file', selectedFile);
@@ -190,23 +222,21 @@
                 const result = await response.json();
 
                 if (response.ok) {
-                    statusDiv.className = 'success';
-                    statusDiv.textContent = 'Session created! Please sign the document via the link below.';
-                    resultLink.href = result.signing_url;
-                    resultLink.style.display = 'block';
+                    statusDiv.className = 'info';
+                    statusDiv.innerHTML = '<div class="loader"></div> Redirecting to Singpass...';
                     
-                    // Use localStorage so data persists after navigating to the Singpass portal and back
+                    // Store session data
                     localStorage.setItem('last_exchange_code', result.exchange_code);
                     localStorage.setItem('last_request_id', result.sign_request_id);
                     localStorage.setItem('last_filename', selectedFile.name);
                     
-                    pollStatus(result.sign_request_id, result.exchange_code);
+                    // Automatic redirect to Singpass portal
+                    window.location.href = result.signing_url;
                 } else {
                     statusDiv.className = 'error';
                     let errorHtml = `<div class="error-title">Error ${response.status}: ${result.error || 'Request failed'}</div>`;
                     if (result.error_description) errorHtml += `<div>${result.error_description}</div>`;
                     if (result.error_details) errorHtml += `<div class="error-detail">${result.error_details}</div>`;
-                    if (result.raw) errorHtml += `<div class="error-detail">${typeof result.raw === 'string' ? result.raw : JSON.stringify(result.raw, null, 2)}</div>`;
                     statusDiv.innerHTML = errorHtml;
                     signBtn.disabled = false;
                 }
@@ -226,11 +256,9 @@
                     if (result.status === 'signed') {
                         clearInterval(interval);
                         statusDiv.className = 'success';
-                        statusDiv.textContent = 'Document signed successfully!';
-                        resultLink.style.display = 'none';
+                        statusDiv.textContent = 'Document signed successfully! The signed PDF has also been emailed to info@project.sg.';
                         downloadBtn.style.display = 'block';
 
-                        // Clean up localStorage after a successful signing session
                         localStorage.removeItem('last_exchange_code');
                         localStorage.removeItem('last_request_id');
 
@@ -240,72 +268,35 @@
                             downloadBtn.textContent = 'Downloading...';
                             try {
                                 const response = await fetch(`/api/download?id=${id}&exchange_code=${exchangeCode}`);
-                                
-                                // Check if response is JSON (error response)
-                                const contentType = response.headers.get('content-type') || '';
-                                if (contentType.includes('application/json')) {
-                                    const errorData = await response.json();
-                                    let errorMsg = errorData.error || 'Download failed';
-                                    if (errorData.description) {
-                                        errorMsg += ': ' + errorData.description;
-                                    }
-                                    throw new Error(errorMsg);
-                                }
-                                
-                                // Check if response is successful
-                                if (!response.ok) {
-                                    throw new Error(`HTTP ${response.status}: Failed to download document`);
-                                }
-                                
-                                // Check if we got a PDF
-                                if (!contentType.includes('application/pdf')) {
-                                    throw new Error('Invalid response: Expected PDF file');
-                                }
+                                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                                 
                                 const blob = await response.blob();
-                                
-                                // Verify blob is not empty and looks like a PDF
-                                if (blob.size === 0) {
-                                    throw new Error('Downloaded file is empty');
-                                }
-                                if (!blob.type.includes('application/pdf')) {
-                                    throw new Error('Downloaded file is not a valid PDF');
-                                }
-                                
-                                const blobUrl = window.URL.createObjectURL(blob);
-                                const link = document.createElement('a');
-                                link.href = blobUrl;
-                                
-                                const originalName = localStorage.getItem('last_filename') || 'signed_document.pdf';
-                                const signedName = originalName.toLowerCase().endsWith('.pdf') 
-                                    ? originalName.replace(/\.pdf$/i, '_signed.pdf')
-                                    : originalName + '_signed.pdf';
-                                link.download = signedName;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                window.URL.revokeObjectURL(blobUrl);
-                                
-                                localStorage.removeItem('last_filename');
-                                downloadBtn.textContent = originalText;
-                                downloadBtn.disabled = false;
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                const originalName = localStorage.getItem('last_filename') || 'document.pdf';
+                                a.download = originalName.replace('.pdf', '_signed.pdf');
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
                             } catch (err) {
-                                statusDiv.className = 'error';
-                                statusDiv.textContent = 'Download failed: ' + err.message;
-                                statusDiv.style.display = 'block';
-                                downloadBtn.textContent = originalText;
+                                alert('Download failed: ' + err.message);
+                            } finally {
                                 downloadBtn.disabled = false;
+                                downloadBtn.textContent = originalText;
                             }
                         };
-                    } else if (result.status !== 'pending') {
+                    } else if (result.status === 'expired' || result.status === 'failed') {
                         clearInterval(interval);
                         statusDiv.className = 'error';
-                        statusDiv.textContent = 'Signing failed: ' + (result.error || 'Unknown error');
+                        statusDiv.textContent = `Signing session ${result.status}. Please try again.`;
+                        signBtn.disabled = false;
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
                 }
-            }, 5000);
+            }, 3000);
         }
     </script>
 </body>
