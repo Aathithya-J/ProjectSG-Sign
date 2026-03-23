@@ -11,6 +11,7 @@
             --primary-hover: #b3151a;
             --bg: #f4f7f6;
             --text: #333;
+            /* Official Singpass Colors */
             --singpass-red: #F4333D;
             --singpass-red-hover: #B0262D;
         }
@@ -59,31 +60,41 @@
         }
         input[type="text"]:focus { outline: none; border-color: var(--primary); }
         
-        /* Official Singpass Button Styles */
+        /* Official Singpass Button - Pixel Perfect Implementation */
         .singpass-button {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding: 0.75rem;
+            height: 48px; /* Standard medium height */
             background-color: var(--singpass-red);
             color: white;
             border: none;
             border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.3s, transform 0.1s;
+            transition: background-color 0.2s;
             text-decoration: none;
             box-sizing: border-box;
+            padding: 0 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .singpass-button:hover { background-color: var(--singpass-red-hover); }
-        .singpass-button:active { transform: scale(0.98); }
-        .singpass-button:disabled { background-color: #ccc; cursor: not-allowed; transform: none; }
+        .singpass-button:hover:not(:disabled) { background-color: var(--singpass-red-hover); }
+        .singpass-button:active:not(:disabled) { transform: translateY(1px); }
+        .singpass-button:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
+        
+        .singpass-button span {
+            display: flex;
+            align-items: center;
+            line-height: 1;
+        }
+
         .singpass-logo {
-            height: 24px;
+            height: 20px; /* Matches Poppins 16px x-height visually */
             margin-left: 8px;
-            vertical-align: middle;
+            display: block;
         }
         
         #status { margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: none; font-size: 0.95rem; line-height: 1.5; }
@@ -97,7 +108,7 @@
             margin-top: 1rem; 
             background-color: #2e7d32; 
             width: 100%;
-            padding: 0.85rem;
+            height: 48px;
             color: white;
             border: none;
             border-radius: 8px;
@@ -132,7 +143,8 @@
 
         <!-- Official Singpass Button -->
         <button id="sign-btn" class="singpass-button" disabled aria-label="Sign with Singpass">
-            Sign with <img src="https://www.singpass.gov.sg/assets/img/singpass-logo-white.svg" alt="Singpass" class="singpass-logo">
+            <span>Sign with</span>
+            <img src="https://www.singpass.gov.sg/assets/img/singpass-logo-white.svg" alt="Singpass" class="singpass-logo">
         </button>
 
         <div id="status"></div>
