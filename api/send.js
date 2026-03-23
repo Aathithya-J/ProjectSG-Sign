@@ -216,6 +216,7 @@ module.exports = async (req, res) => {
     // 3. Build sign-locations for every page
     // ------------------------------------------------------------------
     const detectedPageCount = getPdfPageCount(pdfBuffer);
+    console.log(`Detected PDF page count: ${detectedPageCount}`);
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 100);
 
     const signLocations = [];
@@ -226,6 +227,8 @@ module.exports = async (req, res) => {
         y: 0.01,   // 1% from bottom (extremely low, safest)
         width: 0.1,  // 10% width for signature box (even smaller)
         height: 0.02 // 2% height for signature box (even smaller)
+      });
+      console.log(`Page ${i}: x=${signLocations[i-1].x}, y=${signLocations[i-1].y}, width=${signLocations[i-1].width}, height=${signLocations[i-1].height}`);
       });
     }
 

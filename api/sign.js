@@ -151,6 +151,7 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
 
     const detectedPageCount = getPdfPageCount(pdfBuffer);
+    console.log(`Detected PDF page count: ${detectedPageCount}`);
     const pageCount = Math.min(Math.max(detectedPageCount, 1), 100); // Support up to 100 pages
 
     // Create signature locations for each page
@@ -162,6 +163,8 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
         y: 0.01,   // 1% from bottom (extremely low, safest)
         width: 0.1,  // 10% width for signature box (even smaller)
         height: 0.02 // 2% height for signature box (even smaller)
+      });
+      console.log(`Page ${i}: x=${signLocations[i-1].x}, y=${signLocations[i-1].y}, width=${signLocations[i-1].width}, height=${signLocations[i-1].height}`);
       });
     }
 
