@@ -158,10 +158,10 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({
         page: i,
-        x: 0.75,   // 75% from left (right side, more margin)
-        y: 0.05,   // 5% from bottom (lower area, more margin)
-        width: 0.2,  // 20% width for signature box (smaller)
-        height: 0.04 // 4% height for signature box (smaller)
+        x: 0.5,    // 50% from left (center horizontally)
+        y: 0.02,   // 2% from bottom (very low, safer)
+        width: 0.15, // 15% width for signature box (smaller)
+        height: 0.03 // 3% height for signature box (smaller)
       });
     }
 
