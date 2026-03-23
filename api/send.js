@@ -223,9 +223,9 @@ module.exports = async (req, res) => {
       signLocations.push({
         page: i,
         x: 0.5,    // 50% from left (center horizontally)
-        y: 0.02,   // 2% from bottom (very low, safer)
-        width: 0.15, // 15% width for signature box (smaller)
-        height: 0.03 // 3% height for signature box (smaller)
+        y: 0.01,   // 1% from bottom (extremely low, safest)
+        width: 0.1,  // 10% width for signature box (even smaller)
+        height: 0.02 // 2% height for signature box (even smaller)
       });
     }
 
