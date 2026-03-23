@@ -1,10 +1,13 @@
 /**
  * POST /api/send
  *
- * Accepts a multipart/form-data request with a PDF file (field: "file") and an
- * optional signer NRIC (field: "signer_nric"), creates a Singpass sign request,
- * and returns the signing URL together with the request metadata needed to poll
- * for completion and download the signed document.
+ * Accepts either:
+ *   1. A multipart/form-data request with a PDF file (field: "file") and an
+ *      optional signer NRIC (field: "signer_nric").
+ *   2. A JSON request with a "pdf_url" and an optional "signer_nric".
+ *
+ * Creates a Singpass sign request and returns the signing URL together with
+ * the request metadata needed to poll for completion and download the signed document.
  *
  * Response (200):
  *   {
@@ -16,6 +19,8 @@
 
 const crypto = require("crypto");
 const https = require("https");
+const http = require("http");
+const url = require("url");
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -92,6 +97,31 @@ function getPdfPageCount(buffer) {
   return 1;
 }
 
+// Download PDF from URL
+function downloadPdf(pdfUrl) {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new url.URL(pdfUrl);
+    const protocol = parsedUrl.protocol === "https:" ? https : http;
+
+    const request = protocol.get(pdfUrl, (response) => {
+      if (response.statusCode !== 200) {
+        return reject(new Error(`Failed to download PDF: HTTP ${response.statusCode}`));
+      }
+
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.on("end", () => resolve(Buffer.concat(chunks)));
+      response.on("error", reject);
+    });
+
+    request.on("error", reject);
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error("PDF download timeout"));
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
@@ -108,57 +138,72 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // ------------------------------------------------------------------
-    // 1. Read raw body
-    // ------------------------------------------------------------------
-    const chunks = [];
-    for await (const chunk of req) chunks.push(chunk);
-    const body = Buffer.concat(chunks);
-
     const contentType = req.headers["content-type"] || "";
-    const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
-    const boundary = boundaryMatch
-      ? boundaryMatch[1] || boundaryMatch[2]
-      : null;
-
-    if (!boundary) {
-      return res
-        .status(400)
-        .json({ error: "Invalid content type: boundary missing" });
-    }
-
-    // ------------------------------------------------------------------
-    // 2. Parse multipart body
-    // ------------------------------------------------------------------
-    const boundaryBuffer = Buffer.from("--" + boundary);
     let pdfBuffer = null;
     let signerNric = null;
     let fileName = "document.pdf";
 
-    let pos = 0;
-    while (pos < body.length) {
-      const nextBoundary = body.indexOf(boundaryBuffer, pos);
-      if (nextBoundary === -1) break;
+    if (contentType.includes("multipart/form-data")) {
+      // Handle multipart/form-data (file upload)
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = Buffer.concat(chunks);
 
-      const partStart = nextBoundary + boundaryBuffer.length + 2;
-      const partEnd = body.indexOf(boundaryBuffer, partStart);
-      if (partEnd === -1) break;
+      const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/);
+      const boundary = boundaryMatch
+        ? boundaryMatch[1] || boundaryMatch[2]
+        : null;
 
-      const part = body.slice(partStart, partEnd - 2);
-      const headerEnd = part.indexOf("\r\n\r\n");
-      if (headerEnd !== -1) {
-        const headers = part.slice(0, headerEnd).toString();
-        const content = part.slice(headerEnd + 4);
-
-        if (headers.includes('name="file"')) {
-          pdfBuffer = content;
-          const filenameMatch = headers.match(/filename="([^"]+)"/);
-          if (filenameMatch) fileName = filenameMatch[1];
-        } else if (headers.includes('name="signer_nric"')) {
-          signerNric = content.toString().trim();
-        }
+      if (!boundary) {
+        return res
+          .status(400)
+          .json({ error: "Invalid content type: boundary missing" });
       }
-      pos = partEnd;
+
+      const boundaryBuffer = Buffer.from("--" + boundary);
+      let pos = 0;
+      while (pos < body.length) {
+        const nextBoundary = body.indexOf(boundaryBuffer, pos);
+        if (nextBoundary === -1) break;
+
+        const partStart = nextBoundary + boundaryBuffer.length + 2;
+        const partEnd = body.indexOf(boundaryBuffer, partStart);
+        if (partEnd === -1) break;
+
+        const part = body.slice(partStart, partEnd - 2);
+        const headerEnd = part.indexOf("\r\n\r\n");
+        if (headerEnd !== -1) {
+          const headers = part.slice(0, headerEnd).toString();
+          const content = part.slice(headerEnd + 4);
+
+          if (headers.includes('name="file"')) {
+            pdfBuffer = content;
+            const filenameMatch = headers.match(/filename="([^"]+)"/);
+            if (filenameMatch) fileName = filenameMatch[1];
+          } else if (headers.includes('name="signer_nric"')) {
+            signerNric = content.toString().trim();
+          }
+        }
+        pos = partEnd;
+      }
+    } else if (contentType.includes("application/json")) {
+      // Handle application/json (URL upload)
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = Buffer.concat(chunks);
+      const jsonBody = JSON.parse(body.toString());
+
+      const pdfUrl = jsonBody.pdf_url;
+      signerNric = jsonBody.signer_nric;
+      fileName = jsonBody.filename || "document.pdf";
+
+      if (!pdfUrl) {
+        return res.status(400).json({ error: "Missing pdf_url in request body" });
+      }
+      console.log(`Downloading PDF from: ${pdfUrl}`);
+      pdfBuffer = await downloadPdf(pdfUrl);
+    } else {
+      return res.status(400).json({ error: "Unsupported Content-Type" });
     }
 
     if (!pdfBuffer || pdfBuffer.length === 0) {
@@ -177,10 +222,10 @@ module.exports = async (req, res) => {
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({
         page: i,
-        x: 0.55,
-        y: 0.15,
-        width: 0.35,
-        height: 0.08,
+        x: 0.7,    // 70% from left (right side)
+        y: 0.1,    // 10% from bottom (lower area)
+        width: 0.25, // 25% width for signature box
+        height: 0.05 // 5% height for signature box
       });
     }
 
