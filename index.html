@@ -62,39 +62,47 @@
         
         /* Official Singpass Button - Pixel Perfect Implementation */
         .singpass-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 48px; /* Standard medium height */
-            background-color: var(--singpass-red);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            text-decoration: none;
-            box-sizing: border-box;
-            padding: 0 24px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 100% !important;
+            height: 48px !important;
+            background-color: var(--singpass-red) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-family: 'Poppins', sans-serif !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: background-color 0.2s !important;
+            text-decoration: none !important;
+            box-sizing: border-box !important;
+            padding: 0 24px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            opacity: 1 !important;
         }
-        .singpass-button:hover:not(:disabled) { background-color: var(--singpass-red-hover); }
-        .singpass-button:active:not(:disabled) { transform: translateY(1px); }
-        .singpass-button:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
+        .singpass-button:hover:not(:disabled) { background-color: var(--singpass-red-hover) !important; }
+        .singpass-button:active:not(:disabled) { transform: translateY(1px) !important; }
+        .singpass-button:disabled { 
+            background-color: #F4333D !important; /* Keep red but lower opacity */
+            opacity: 0.6 !important;
+            cursor: not-allowed !important; 
+            box-shadow: none !important; 
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
         
         .singpass-button span {
-            display: flex;
-            align-items: center;
-            line-height: 1;
+            display: flex !important;
+            align-items: center !important;
+            line-height: 1 !important;
         }
 
         .singpass-logo {
-            height: 20px; /* Matches Poppins 16px x-height visually */
-            margin-left: 8px;
-            display: block;
+            height: 20px !important;
+            margin-left: 8px !important;
+            display: block !important;
+            filter: brightness(0) invert(1) !important; /* Force logo to be white */
         }
         
         #status { margin-top: 1.5rem; padding: 1.25rem; border-radius: 8px; display: none; font-size: 0.95rem; line-height: 1.5; }
@@ -144,7 +152,8 @@
         <!-- Official Singpass Button -->
         <button id="sign-btn" class="singpass-button" disabled aria-label="Sign with Singpass">
             <span>Sign with</span>
-            <img src="https://www.singpass.gov.sg/assets/img/singpass-logo-white.svg" alt="Singpass" class="singpass-logo">
+            <!-- Using a high-quality logo and forcing white color via CSS filter -->
+            <img src="https://www.singpass.gov.sg/assets/img/singpass-logo-white.svg" alt="Singpass" class="singpass-logo" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Singpass_logo.svg/512px-Singpass_logo.svg.png'; this.style.filter='brightness(0) invert(1)';">
         </button>
 
         <div id="status"></div>
