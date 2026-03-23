@@ -15,7 +15,6 @@
         :root {
             --sp-red: #F4333D;
             --sp-red-hover: #B0262D;
-            --sp-white-hover: #F5F5F7;
             --text-primary: #1a1a1a;
             --text-secondary: #6b7280;
             --border-color: #e5e7eb;
@@ -260,40 +259,30 @@
             color: #c1c7d0;
         }
 
-        /* ── Sign with Singpass button (compliant) ── */
+        /* ── Sign with Singpass button (official SVG) ── */
         .singpass-btn-wrap {
             margin-bottom: 8px;
         }
 
-        /* Red-filled button — full width to match primary button */
         .singpass-button {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
+            display: block;
             width: 100%;
-            height: 48px;
-            background: var(--sp-red);
-            color: #ffffff;
+            height: auto;
+            background: none;
             border: none;
-            border-radius: var(--radius-sm);
-            font-family: 'Poppins', sans-serif;
-            font-size: 16px;
-            font-weight: 700;
             cursor: pointer;
-            transition: background 0.15s, box-shadow 0.15s;
-            text-decoration: none;
-            padding: 0 20px;
-            position: relative;
-            overflow: hidden;
+            transition: opacity 0.15s, transform 0.15s;
+            padding: 0;
+            font-family: inherit;
         }
 
-        .singpass-button:hover:not(:disabled) {
-            background: var(--sp-red-hover);
+        .singpass-button:hover:not(:disabled) svg {
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
 
-        .singpass-button:active:not(:disabled) {
-            background: #8e1c22;
+        .singpass-button:active:not(:disabled) svg {
+            transform: translateY(0);
         }
 
         .singpass-button:disabled {
@@ -301,41 +290,13 @@
             cursor: not-allowed;
         }
 
-        .singpass-button .btn-label {
-            white-space: nowrap;
-        }
-
-        /* Singpass logo inside button — aria-label="sing pass" per guidelines */
-        .singpass-button .sp-logo {
-            height: 20px; /* matches x-height of 16px Poppins Bold */
-            width: auto;
+        .singpass-button svg {
+            width: 100%;
+            height: auto;
+            max-width: 280px;
             display: block;
-            flex-shrink: 0;
-        }
-
-        /* Loading spinner inside button */
-        .btn-spinner {
-            display: none;
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255,255,255,0.35);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-            flex-shrink: 0;
-        }
-
-        .singpass-button.loading .btn-spinner {
-            display: block;
-        }
-
-        .singpass-button.loading .btn-label,
-        .singpass-button.loading .sp-logo {
-            opacity: 0.6;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            margin: 0 auto;
+            transition: opacity 0.15s, transform 0.15s;
         }
 
         /* ── Status messages ── */
@@ -384,6 +345,76 @@
             background: rgba(0,0,0,0.05);
             padding: 8px;
             border-radius: 4px;
+        }
+
+        /* ── Link display section ── */
+        .link-section {
+            display: none;
+            margin-top: 20px;
+            padding: 16px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: var(--radius-sm);
+        }
+
+        .link-section.visible {
+            display: block;
+        }
+
+        .link-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+
+        .link-box {
+            background: white;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            word-break: break-all;
+            font-size: 11.5px;
+            font-family: 'Courier New', Courier, monospace;
+            color: #1f2937;
+        }
+
+        .link-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .link-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+
+        .link-btn-primary {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .link-btn-primary:hover {
+            background: #d97706;
+        }
+
+        .link-btn-secondary {
+            background: #e5e7eb;
+            color: #1f2937;
+        }
+
+        .link-btn-secondary:hover {
+            background: #d1d5db;
         }
 
         /* ── Download button ── */
@@ -445,6 +476,10 @@
             .card-title {
                 font-size: 20px;
             }
+
+            .singpass-button svg {
+                max-width: 240px;
+            }
         }
     </style>
 </head>
@@ -452,7 +487,6 @@
 
     <div class="brand">
         <div class="brand-icon">
-            <!-- PDF icon -->
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
             </svg>
@@ -471,7 +505,6 @@
         <!-- Drop zone -->
         <div class="drop-zone" id="drop-zone" role="button" tabindex="0" aria-label="Upload PDF file">
             <div class="drop-zone-icon">
-                <!-- PDF file icon -->
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="#F4333D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                     <path d="M14 2v6h6" stroke="#F4333D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -503,7 +536,7 @@
             </div>
         </div>
 
-        <!-- Sign with Singpass button — compliant with UX guidelines -->
+        <!-- Sign with Singpass button — official SVG from guidelines -->
         <div class="singpass-btn-wrap">
             <button
                 id="sign-btn"
@@ -511,17 +544,8 @@
                 disabled
                 aria-label="Sign with Sing pass"
             >
-                <div class="btn-spinner"></div>
-                <span class="btn-label">Sign with</span>
-                <!-- Singpass wordmark logo — aria-label="sing pass" per guidelines -->
-                <svg
-                    class="sp-logo"
-                    aria-label="sing pass"
-                    role="img"
-                    viewBox="0 0 191 48"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
+                <svg width="191" height="48" viewBox="0 0 191 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="191" height="48" rx="6" fill="#F4333D"/>
                     <path d="M21.056 30.112C20.2347 30.112 19.4987 29.9787 18.848 29.712C18.1973 29.4453 17.6747 29.0507 17.28 28.528C16.896 28.0053 16.6933 27.376 16.672 26.64H19.584C19.6267 27.056 19.7707 27.376 20.016 27.6C20.2613 27.8133 20.5813 27.92 20.976 27.92C21.3813 27.92 21.7013 27.8293 21.936 27.648C22.1707 27.456 22.288 27.1947 22.288 26.864C22.288 26.5867 22.192 26.3573 22 26.176C21.8187 25.9947 21.5893 25.8453 21.312 25.728C21.0453 25.6107 20.6613 25.4773 20.16 25.328C19.4347 25.104 18.8427 24.88 18.384 24.656C17.9253 24.432 17.5307 24.1013 17.2 23.664C16.8693 23.2267 16.704 22.656 16.704 21.952C16.704 20.9067 17.0827 20.0907 17.84 19.504C18.5973 18.9067 19.584 18.608 20.8 18.608C22.0373 18.608 23.0347 18.9067 23.792 19.504C24.5493 20.0907 24.9547 20.912 25.008 21.968H22.048C22.0267 21.6053 21.8933 21.3227 21.648 21.12C21.4027 20.9067 21.088 20.8 20.704 20.8C20.3733 20.8 20.1067 20.8907 19.904 21.072C19.7013 21.2427 19.6 21.4933 19.6 21.824C19.6 22.1867 19.7707 22.4693 20.112 22.672C20.4533 22.8747 20.9867 23.0933 21.712 23.328C22.4373 23.5733 23.024 23.808 23.472 24.032C23.9307 24.256 24.3253 24.5813 24.656 25.008C24.9867 25.4347 25.152 25.984 25.152 26.656C25.152 27.296 24.9867 27.8773 24.656 28.4C24.336 28.9227 23.8667 29.3387 23.248 29.648C22.6293 29.9573 21.8987 30.112 21.056 30.112ZM28.2118 20.144C27.7318 20.144 27.3371 20.0053 27.0278 19.728C26.7291 19.44 26.5798 19.088 26.5798 18.672C26.5798 18.2453 26.7291 17.8933 27.0278 17.616C27.3371 17.328 27.7318 17.184 28.2118 17.184C28.6811 17.184 29.0651 17.328 29.3638 17.616C29.6731 17.8933 29.8278 18.2453 29.8278 18.672C29.8278 19.088 29.6731 19.44 29.3638 19.728C29.0651 20.0053 28.6811 20.144 28.2118 20.144ZM29.5718 21.072V30H26.8358V21.072H29.5718ZM34.9465 20.944C35.5758 20.944 36.1252 21.072 36.5945 21.328C37.0745 21.584 37.4425 21.92 37.6985 22.336V21.072H40.4345V29.984C40.4345 30.8053 40.2692 31.5467 39.9385 32.208C39.6185 32.88 39.1225 33.4133 38.4505 33.808C37.7892 34.2027 36.9625 34.4 35.9705 34.4C34.6478 34.4 33.5758 34.0853 32.7545 33.456C31.9332 32.8373 31.4638 31.9947 31.3465 30.928H34.0505C34.1358 31.2693 34.3385 31.536 34.6585 31.728C34.9785 31.9307 35.3732 32.032 35.8425 32.032C36.4078 32.032 36.8558 31.8667 37.1865 31.536C37.5278 31.216 37.6985 30.6987 37.6985 29.984V28.72C37.4318 29.136 37.0638 29.4773 36.5945 29.744C36.1252 30 35.5758 30.128 34.9465 30.128C34.2105 30.128 33.5438 29.9413 32.9465 29.568C32.3492 29.184 31.8745 28.6453 31.5225 27.952C31.1812 27.248 31.0105 26.4373 31.0105 25.52C31.0105 24.6027 31.1812 23.7973 31.5225 23.104C31.8745 22.4107 32.3492 21.8773 32.9465 21.504C33.5438 21.1307 34.2105 20.944 34.9465 20.944ZM37.6985 25.536C37.6985 24.8533 37.5065 24.3147 37.1225 23.92C36.7492 23.5253 36.2905 23.328 35.7465 23.328C35.2025 23.328 34.7385 23.5253 34.3545 23.92C33.9812 24.304 33.7945 24.8373 33.7945 25.52C33.7945 26.2027 33.9812 26.7467 34.3545 27.152C34.7385 27.5467 35.2025 27.744 35.7465 27.744C36.2905 27.744 36.7492 27.5467 37.1225 27.152C37.5065 26.7573 37.6985 26.2187 37.6985 25.536ZM47.8539 20.976C48.8992 20.976 49.7312 21.3173 50.3499 22C50.9792 22.672 51.2939 23.6 51.2939 24.784V30H48.5739V25.152C48.5739 24.5547 48.4192 24.0907 48.1099 23.76C47.8005 23.4293 47.3845 23.264 46.8619 23.264C46.3392 23.264 45.9232 23.4293 45.6139 23.76C45.3045 24.0907 45.1499 24.5547 45.1499 25.152V30H42.4139V21.072H45.1499V22.256C45.4272 21.8613 45.8005 21.552 46.2699 21.328C46.7392 21.0933 47.2672 20.976 47.8539 20.976Z" fill="white"/>
                     <path d="M69.808 21.072L67.392 30H64.368L62.96 24.208L61.504 30H58.496L56.064 21.072H58.8L60.064 27.456L61.568 21.072H64.464L65.984 27.424L67.232 21.072H69.808ZM72.2274 20.144C71.7474 20.144 71.3527 20.0053 71.0434 19.728C70.7447 19.44 70.5954 19.088 70.5954 18.672C70.5954 18.2453 70.7447 17.8933 71.0434 17.616C71.3527 17.328 71.7474 17.184 72.2274 17.184C72.6967 17.184 73.0807 17.328 73.3794 17.616C73.6887 17.8933 73.8434 18.2453 73.8434 18.672C73.8434 19.088 73.6887 19.44 73.3794 19.728C73.0807 20.0053 72.6967 20.144 72.2274 20.144ZM73.5874 21.072V30H70.8514V21.072H73.5874ZM80.5461 27.68V30H79.1541C78.1621 30 77.3888 29.76 76.8341 29.28C76.2795 28.7893 76.0021 27.9947 76.0021 26.896V23.344H74.9141V21.072H76.0021V18.896H78.7381V21.072H80.5301V23.344H78.7381V26.928C78.7381 27.1947 78.8021 27.3867 78.9301 27.504C79.0581 27.6213 79.2715 27.68 79.5701 27.68H80.5461ZM87.5581 20.976C88.5821 20.976 89.4035 21.3173 90.0221 22C90.6408 22.672 90.9501 23.6 90.9501 24.784V30H88.2301V25.152C88.2301 24.5547 88.0755 24.0907 87.7661 23.76C87.4568 23.4293 87.0408 23.264 86.5181 23.264C85.9955 23.264 85.5795 23.4293 85.2701 23.76C84.9608 24.0907 84.8061 24.5547 84.8061 25.152V30H82.0701V18.16H84.8061V22.272C85.0835 21.8773 85.4621 21.5627 85.9421 21.328C86.4221 21.0933 86.9608 20.976 87.5581 20.976Z" fill="white"/>
                     <path fill-rule="evenodd" clip-rule="evenodd" d="M106.661 23.4167C107.607 23.4167 108.34 22.684 108.34 21.7391C108.34 20.7943 107.607 20.0615 106.661 20.0615C105.716 20.0615 104.983 20.7943 104.983 21.7391C104.983 22.684 105.716 23.4167 106.661 23.4167Z" fill="white"/>
@@ -538,6 +562,17 @@
         </div>
 
         <div id="status"></div>
+
+        <!-- Link display section (shown after clicking button) -->
+        <div class="link-section" id="link-section">
+            <div class="link-section-title">📋 Your signing link is ready:</div>
+            <div class="link-box" id="link-box"></div>
+            <div class="link-actions">
+                <button class="link-btn link-btn-primary" id="open-link-btn">Open in Singpass</button>
+                <button class="link-btn link-btn-secondary" id="copy-link-btn">Copy Link</button>
+            </div>
+        </div>
+
         <button id="download-btn">⬇ Download Signed PDF</button>
 
         <div class="card-footer">
@@ -554,8 +589,13 @@
         const nricInput     = document.getElementById('signer-nric');
         const statusDiv     = document.getElementById('status');
         const downloadBtn   = document.getElementById('download-btn');
+        const linkSection   = document.getElementById('link-section');
+        const linkBox       = document.getElementById('link-box');
+        const openLinkBtn   = document.getElementById('open-link-btn');
+        const copyLinkBtn   = document.getElementById('copy-link-btn');
 
         let selectedFile = null;
+        let signingUrl = null;
 
         // ── Resume session on page load ──────────────────────────────────────
         window.onload = () => {
@@ -600,15 +640,14 @@
             signBtn.disabled = false;
             statusDiv.style.display = 'none';
             downloadBtn.style.display = 'none';
+            linkSection.classList.remove('visible');
         }
 
         // ── Sign button click ────────────────────────────────────────────────
         signBtn.onclick = async () => {
             if (signBtn.disabled || !selectedFile) return;
 
-            // Loading state (per Singpass UX guidelines)
             signBtn.disabled = true;
-            signBtn.classList.add('loading');
             showStatus('info', 'Initiating signing session…');
 
             const formData = new FormData();
@@ -634,13 +673,20 @@
                 }
 
                 if (response.ok) {
-                    showStatus('info', 'Redirecting to Singpass…');
+                    // Store for polling
+                    signingUrl = result.signing_url;
                     localStorage.setItem('last_exchange_code', result.exchange_code);
                     localStorage.setItem('last_request_id',   result.sign_request_id);
-                    window.location.href = result.signing_url;
+
+                    // Show the link instead of redirecting
+                    showStatus('success', 'Your signing link is ready! Click "Open in Singpass" to proceed.');
+                    linkBox.textContent = signingUrl;
+                    linkSection.classList.add('visible');
+
+                    // Start polling in background
+                    pollStatus(result.sign_request_id, result.exchange_code);
                 } else {
                     signBtn.disabled = false;
-                    signBtn.classList.remove('loading');
                     let html = `<div class="status-title">Error ${response.status}: ${result.error || 'Request failed'}</div>`;
                     if (result.error_description) html += `<div>${result.error_description}</div>`;
                     if (result.error_details)     html += `<div class="error-detail">${escapeHtml(result.error_details)}</div>`;
@@ -648,8 +694,22 @@
                 }
             } catch (err) {
                 signBtn.disabled = false;
-                signBtn.classList.remove('loading');
                 showStatus('error', 'Connection error: ' + err.message);
+            }
+        };
+
+        // ── Link actions ─────────────────────────────────────────────────────
+        openLinkBtn.onclick = () => {
+            if (signingUrl) window.open(signingUrl, '_blank');
+        };
+
+        copyLinkBtn.onclick = () => {
+            if (signingUrl) {
+                navigator.clipboard.writeText(signingUrl).then(() => {
+                    const orig = copyLinkBtn.textContent;
+                    copyLinkBtn.textContent = '✓ Copied!';
+                    setTimeout(() => { copyLinkBtn.textContent = orig; }, 2000);
+                });
             }
         };
 
@@ -671,6 +731,7 @@
                         clearInterval(interval);
                         showStatus('success', 'Document signed successfully! The signed PDF has been emailed to info@project.sg.');
                         downloadBtn.style.display = 'block';
+                        linkSection.classList.remove('visible');
                         localStorage.removeItem('last_exchange_code');
                         localStorage.removeItem('last_request_id');
 
@@ -701,7 +762,6 @@
                         clearInterval(interval);
                         showStatus('error', `Signing session ${result.status}. Please try again.`);
                         signBtn.disabled = false;
-                        signBtn.classList.remove('loading');
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
