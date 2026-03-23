@@ -563,13 +563,13 @@
 
         <div id="status"></div>
 
-        <!-- Link display section (shown after clicking button) -->
-        <div class="link-section" id="link-section">
+        <!-- Link display section (hidden — auto-redirects now per Singpass guidelines) -->
+        <div class="link-section" id="link-section" style="display: none;">
             <div class="link-section-title">📋 Your signing link is ready:</div>
             <div class="link-box" id="link-box"></div>
             <div class="link-actions">
-                <button class="link-btn link-btn-primary" id="open-link-btn">Open in Singpass</button>
-                <button class="link-btn link-btn-secondary" id="copy-link-btn">Copy Link</button>
+                <button class="link-btn link-btn-primary" id="open-link-btn" style="display: none;">Open in Singpass</button>
+                <button class="link-btn link-btn-secondary" id="copy-link-btn" style="display: none;">Copy Link</button>
             </div>
         </div>
 
@@ -677,14 +677,13 @@
                     signingUrl = result.signing_url;
                     localStorage.setItem('last_exchange_code', result.exchange_code);
                     localStorage.setItem('last_request_id',   result.sign_request_id);
-
-                    // Show the link instead of redirecting
-                    showStatus('success', 'Your signing link is ready! Click "Open in Singpass" to proceed.');
-                    linkBox.textContent = signingUrl;
-                    linkSection.classList.add('visible');
+                    localStorage.setItem('last_filename', selectedFile.name);
 
                     // Start polling in background
                     pollStatus(result.sign_request_id, result.exchange_code);
+
+                    // Auto-redirect to Singpass portal per implementation notes
+                    window.location.href = signingUrl;
                 } else {
                     signBtn.disabled = false;
                     let html = `<div class="status-title">Error ${response.status}: ${result.error || 'Request failed'}</div>`;
