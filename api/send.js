@@ -222,10 +222,10 @@ module.exports = async (req, res) => {
     for (let i = 1; i <= pageCount; i++) {
       signLocations.push({
         page: i,
-        x: 0.7,    // 70% from left (right side)
-        y: 0.1,    // 10% from bottom (lower area)
-        width: 0.25, // 25% width for signature box
-        height: 0.05 // 5% height for signature box
+        x: 0.75,   // 75% from left (right side, more margin)
+        y: 0.05,   // 5% from bottom (lower area, more margin)
+        width: 0.2,  // 20% width for signature box (smaller)
+        height: 0.04 // 4% height for signature box (smaller)
       });
     }
 
