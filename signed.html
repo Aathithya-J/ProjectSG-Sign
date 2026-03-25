@@ -54,31 +54,15 @@
         .brand {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 24px;
-        }
-
-        .brand-icon {
-            width: 40px;
-            height: 40px;
-            background: var(--sp-red);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
             justify-content: center;
+            margin-bottom: 32px;
+            width: 100%;
         }
 
-        .brand-icon svg {
-            width: 22px;
-            height: 22px;
-            fill: white;
-        }
-
-        .brand-name {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-            letter-spacing: -0.3px;
+        .brand-logo {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
         }
 
         /* ── Card ── */
@@ -212,12 +196,7 @@
 <body>
 
     <div class="brand">
-        <div class="brand-icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>
-            </svg>
-        </div>
-        <span class="brand-name">PDF Signer</span>
+        <img src="https://cloud-1de12d.becdn.net/media/original/a0e695626cfe146f39730b50d9d14120/Standard-Black.png" alt="Logo" class="brand-logo">
     </div>
 
     <div class="card">
