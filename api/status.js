@@ -64,7 +64,7 @@ CmSfkYQoenLG7keDDINXGtTOGR6hRANCAASfQOloP4YWjS+pF5aWVsshFXahP4j9
 bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 -----END PRIVATE KEY-----`;
 
-  const apiUrl = `https://sign.singpass.gov.sg/api/v3/sign-requests/${id}/signed-doc`;
+  const apiUrl = `https://app.sign.singpass.gov.sg/api/v3/sign-requests/${id}/signed-doc`;
 
   const jwt = createJWT(
     {
