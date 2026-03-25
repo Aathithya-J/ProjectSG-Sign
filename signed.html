@@ -142,6 +142,15 @@
         #status.error   { background: var(--error-bg);   color: var(--error-text);   border-color: var(--error-border); }
         #status.success { background: var(--success-bg); color: var(--success-text); border-color: var(--success-border); }
         #status.warning { background: var(--warning-bg); color: var(--warning-text); border-color: var(--warning-border); }
+        
+        /* Yellow banner for success */
+        #status.yellow-banner {
+            background: #fffbeb;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            text-align: center;
+            font-weight: 500;
+        }
 
         /* ── Buttons ── */
         .btn-group {
@@ -271,7 +280,8 @@
                 if (result.status === 'signed') {
                     showDownloadUI();
                 } else if (result.status === 'pending') {
-                    showError('Still Processing', 'Your document is still being processed. Please wait a moment and refresh the page.');
+                    // Keep polling or show processing
+                    setTimeout(fetchSignedDocument, 3000);
                 } else if (result.status === 'cancelled') {
                     showCancelled();
                 } else if (result.status === 'expired') {
@@ -296,117 +306,56 @@
             cardTitle.textContent = 'Document Signed!';
             cardSubtitle.textContent = 'Your document has been signed successfully via Singpass.';
 
-            statusDiv.className   = 'success';
-            statusDiv.textContent = 'The signed PDF has been emailed to info@project.sg.';
+            statusDiv.className   = 'yellow-banner';
+            statusDiv.textContent = 'For records purposes, we have emailed the signed PDF to info@project.sg';
             statusDiv.style.display = 'block';
 
             btnGroup.style.display   = 'flex';
             downloadBtn.style.display = 'block';
-
-            downloadBtn.onclick = async () => {
-                downloadBtn.disabled    = true;
-                downloadBtn.textContent = 'Downloading…';
-                try {
-                    const res = await fetch(`/api/download?id=${requestId}&exchange_code=${exchangeCode}`);
-                    const ct  = res.headers.get('content-type') || '';
-
-                    if (ct.includes('application/json')) {
-                        const err = await res.json();
-                        throw new Error(err.error || 'Download failed');
-                    }
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    if (!ct.includes('application/pdf')) throw new Error('Invalid response: expected PDF');
-
-                    const blob = await res.blob();
-                    if (blob.size === 0) throw new Error('Downloaded file is empty');
-
-                    const blobUrl = window.URL.createObjectURL(blob);
-                    const link    = document.createElement('a');
-                    link.href     = blobUrl;
-                    const orig    = localStorage.getItem('last_filename') || 'document.pdf';
-                    link.download = orig.replace(/\.pdf$/i, '_signed.pdf');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(blobUrl);
-
-                    localStorage.removeItem('last_exchange_code');
-                    localStorage.removeItem('last_request_id');
-                    localStorage.removeItem('last_filename');
-                } catch (err) {
-                    statusDiv.className   = 'error';
-                    statusDiv.textContent = 'Download failed: ' + err.message;
-                    statusDiv.style.display = 'block';
-                } finally {
-                    downloadBtn.disabled    = false;
-                    downloadBtn.textContent = '⬇ Download Signed PDF';
-                }
+            downloadBtn.onclick = () => {
+                const filename = localStorage.getItem('last_filename') || 'signed_document.pdf';
+                window.location.href = `/api/download?id=${requestId}&exchange_code=${exchangeCode}&filename=${filename}`;
             };
-        }
 
-        function showError(title, msg) {
-            hideLoader();
-            stateIcon.textContent = '✕';
-            stateIcon.className   = 'state-icon error';
-            cardTitle.textContent = title;
-            cardSubtitle.textContent = '';
-
-            statusDiv.className   = 'error';
-            statusDiv.textContent = msg;
-            statusDiv.style.display = 'block';
-
-            btnGroup.style.display  = 'flex';
-            retryBtn.style.display  = 'block';
-            backBtn.style.display   = 'block';
-            wireBackButtons();
+            backBtn.style.display = 'block';
+            backBtn.onclick = () => window.location.href = '/';
         }
 
         function showCancelled() {
             hideLoader();
-            stateIcon.textContent = '⊘';
+            stateIcon.textContent = '!';
             stateIcon.className   = 'state-icon warning';
             cardTitle.textContent = 'Signing Cancelled';
-            cardSubtitle.textContent = 'You cancelled the signing process. Your document was not signed.';
-
-            statusDiv.className   = 'warning';
-            statusDiv.textContent = 'You can start the signing process again at any time.';
-            statusDiv.style.display = 'block';
-
-            btnGroup.style.display  = 'flex';
-            retryBtn.style.display  = 'block';
-            backBtn.style.display   = 'block';
-            wireBackButtons();
+            cardSubtitle.textContent = 'The signing process was cancelled by the user.';
+            btnGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            retryBtn.onclick = () => window.location.href = '/';
         }
 
         function showExpired() {
             hideLoader();
             stateIcon.textContent = '⏱';
             stateIcon.className   = 'state-icon expired';
-            cardTitle.textContent = 'Session Expired';
-            cardSubtitle.textContent = 'Your signing session has expired.';
-
-            statusDiv.className   = 'warning';
-            statusDiv.textContent = 'Please start the signing process again.';
-            statusDiv.style.display = 'block';
-
-            btnGroup.style.display  = 'flex';
-            retryBtn.style.display  = 'block';
-            backBtn.style.display   = 'block';
-            wireBackButtons();
+            cardTitle.textContent = 'Request Expired';
+            cardSubtitle.textContent = 'The signing request has expired. Please try again.';
+            btnGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            retryBtn.onclick = () => window.location.href = '/';
         }
 
-        function wireBackButtons() {
-            const clearAndGo = () => {
-                localStorage.removeItem('last_exchange_code');
-                localStorage.removeItem('last_request_id');
-                localStorage.removeItem('last_filename');
-                window.location.href = '/';
-            };
-            retryBtn.onclick = clearAndGo;
-            backBtn.onclick  = clearAndGo;
+        function showError(title, message) {
+            hideLoader();
+            stateIcon.textContent = '✕';
+            stateIcon.className   = 'state-icon error';
+            cardTitle.textContent = title;
+            cardSubtitle.textContent = message;
+            btnGroup.style.display = 'flex';
+            retryBtn.style.display = 'block';
+            retryBtn.onclick = () => window.location.href = '/';
         }
 
-        window.onload = () => fetchSignedDocument();
+        // ── Start ─────────────────────────────────────────────────────────────
+        fetchSignedDocument();
     </script>
 </body>
 </html>

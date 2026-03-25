@@ -380,47 +380,68 @@
             border-color: var(--success-border);
         }
 
-        .status-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .error-detail {
-            font-size: 11.5px;
-            font-family: 'Courier New', Courier, monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 8px;
-            background: rgba(0,0,0,0.05);
-            padding: 8px;
-            border-radius: 4px;
-        }
-
-        #download-btn {
+        /* ── Link Share UI ── */
+        #link-share-container {
             display: none;
-            width: 100%;
-            margin-top: 20px;
-            padding: 12px;
-            background: #16a34a;
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .card-footer {
-            margin-top: 32px;
+            margin-top: 24px;
+            padding: 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--radius-md);
             text-align: center;
         }
 
-        .card-footer p {
-            font-size: 12px;
+        .share-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .link-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .link-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            background: white;
             color: var(--text-secondary);
-            line-height: 1.6;
+            outline: none;
+        }
+
+        .copy-btn {
+            padding: 8px 16px;
+            background: var(--sp-red);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: var(--sp-red-hover);
+        }
+
+        .redirect-btn {
+            display: block;
+            margin-top: 12px;
+            font-size: 13px;
+            color: var(--sp-red);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .redirect-btn:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -433,7 +454,7 @@
         </div>
         <div class="login-card">
             <h1 class="login-title">Welcome back</h1>
-            <p class="login-subtitle">Please sign in to access the portal</p>
+            <p class="login-subtitle">Sign in to access the portal</p>
             <button id="google-login-btn" class="google-btn">
                 <svg viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -443,7 +464,7 @@
                 </svg>
                 Sign in with Google
             </button>
-            <div id="auth-error" style="color: var(--error-text); font-size: 13px; margin-top: 16px; display: none;"></div>
+            <div id="auth-error" style="display:none; color:red; margin-top:10px;"></div>
         </div>
     </div>
 
@@ -466,7 +487,7 @@
 
             <div class="drop-zone" id="drop-zone">
                 <div class="drop-zone-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--sp-red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
                 <div class="drop-zone-title">Drag & drop your PDF here</div>
                 <div class="drop-zone-subtitle">or click to browse files</div>
@@ -482,7 +503,7 @@
                 <label class="input-label">Signer NRIC <span class="optional">(optional)</span></label>
                 <div class="input-wrapper">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <input type="text" id="signer-nric" placeholder="e.g. S1234567A" maxlength="9">
+                    <input type="text" id="signer-nric" placeholder="e.g. S1234567A" maxlength="9" autocomplete="off">
                 </div>
             </div>
 
@@ -505,12 +526,16 @@
                 </button>
             </div>
 
-            <div id="status"></div>
-            <button id="download-btn">⬇ Download Signed PDF</button>
-
-            <div class="card-footer">
-                <p>Your document is transmitted securely. By proceeding, you agree to sign using your Singpass digital identity.</p>
+            <div id="link-share-container">
+                <p class="share-title">Sending this to a client? Copy link</p>
+                <div class="link-box">
+                    <input type="text" id="share-link-input" class="link-input" readonly>
+                    <button id="copy-link-btn" class="copy-btn">Copy</button>
+                </div>
+                <a id="direct-sign-link" href="#" class="redirect-btn">Or sign it yourself now &rarr;</a>
             </div>
+
+            <div id="status"></div>
         </div>
     </div>
 
@@ -585,7 +610,10 @@
         const nricInput     = document.getElementById('signer-nric');
         const signBtn       = document.getElementById('sign-btn');
         const statusDiv     = document.getElementById('status');
-        const downloadBtn   = document.getElementById('download-btn');
+        const linkShareContainer = document.getElementById('link-share-container');
+        const shareLinkInput = document.getElementById('share-link-input');
+        const copyLinkBtn = document.getElementById('copy-link-btn');
+        const directSignLink = document.getElementById('direct-sign-link');
 
         let selectedFile = null;
 
@@ -604,17 +632,44 @@
             if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
         };
 
-        function handleFileSelect(file) {
+        async function handleFileSelect(file) {
+            // Check if PDF is already signed
+            const isSigned = await checkIfPdfIsSigned(file);
+            if (isSigned) {
+                showStatus('error', 'This PDF is already signed. Please upload an unsigned document.');
+                selectedFile = null;
+                fileBadge.classList.remove('visible');
+                signBtn.disabled = true;
+                return;
+            }
+
             selectedFile = file;
             fileNameText.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' kB)';
             fileBadge.classList.add('visible');
             signBtn.disabled = false;
+            statusDiv.style.display = 'none';
+        }
+
+        async function checkIfPdfIsSigned(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    // Simple check for common digital signature markers in PDF
+                    // This is a basic check; for production, a more robust PDF parser would be better
+                    const signedMarkers = ['/Sig', '/ByteRange', '/Contents'];
+                    const isSigned = signedMarkers.some(marker => content.includes(marker));
+                    resolve(isSigned);
+                };
+                reader.readAsText(file.slice(0, 100000)); // Read first 100KB
+            });
         }
 
         signBtn.onclick = async () => {
             if (!selectedFile) return;
             signBtn.disabled = true;
             showStatus('info', 'Initiating signing session…');
+            linkShareContainer.style.display = 'none';
 
             const formData = new FormData();
             formData.append('file', selectedFile);
@@ -628,7 +683,12 @@
                     localStorage.setItem('last_exchange_code', result.exchange_code);
                     localStorage.setItem('last_request_id',   result.sign_request_id);
                     localStorage.setItem('last_filename', selectedFile.name);
-                    window.location.href = result.signing_url;
+                    
+                    // Show shareable link instead of redirecting
+                    shareLinkInput.value = result.signing_url;
+                    directSignLink.href = result.signing_url;
+                    linkShareContainer.style.display = 'block';
+                    showStatus('success', 'Signing session created!');
                 } else {
                     signBtn.disabled = false;
                     showStatus('error', 'Error: ' + (result.error || 'Request failed'));
@@ -637,6 +697,14 @@
                 signBtn.disabled = false;
                 showStatus('error', 'Connection error: ' + err.message);
             }
+        };
+
+        copyLinkBtn.onclick = () => {
+            shareLinkInput.select();
+            document.execCommand('copy');
+            const originalText = copyLinkBtn.textContent;
+            copyLinkBtn.textContent = 'Copied!';
+            setTimeout(() => copyLinkBtn.textContent = originalText, 2000);
         };
 
         function showStatus(type, text) {
