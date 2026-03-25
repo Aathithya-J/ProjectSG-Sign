@@ -43,8 +43,8 @@ function createJWT(payload, privateKey, kid, aud) {
     exp: iat + 120,
     jti: crypto.randomUUID(),
     aud,
-    iss: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
-    sub: "WTYhkYnUJubcEOzDokeJO4szhblsEzF4",
+    iss: "_ELmUvm5LOKEBjp0-TLBe4_J8iC9J0lQ",
+    sub: "_ELmUvm5LOKEBjp0-TLBe4_J8iC9J0lQ",
   };
 
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
@@ -234,7 +234,7 @@ module.exports = async (req, res) => {
     // ------------------------------------------------------------------
     // 4. Create Singpass sign request
     // ------------------------------------------------------------------
-    const clientId = "WTYhkYnUJubcEOzDokeJO4szhblsEzF4";
+    const clientId = "_ELmUvm5LOKEBjp0-TLBe4_J8iC9J0lQ";
     const kid = "key-1";
     const privateKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgNbVMxiHb2ODp6/Yw
@@ -242,7 +242,7 @@ CmSfkYQoenLG7keDDINXGtTOGR6hRANCAASfQOloP4YWjS+pF5aWVsshFXahP4j9
 bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
 -----END PRIVATE KEY-----`;
 
-    const apiUrl = "https://staging.sign.singpass.gov.sg/api/v3/sign-requests";
+    const apiUrl = "https://sign.singpass.gov.sg/api/v3/sign-requests";
 
     const jwtPayload = {
       client_id: clientId,
