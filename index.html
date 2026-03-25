@@ -655,13 +655,30 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const content = e.target.result;
-                    // Simple check for common digital signature markers in PDF
-                    // This is a basic check; for production, a more robust PDF parser would be better
-                    const signedMarkers = ['/Sig', '/ByteRange', '/Contents'];
-                    const isSigned = signedMarkers.some(marker => content.includes(marker));
+                    // More specific check for digital signatures in PDF
+                    // We look for the /Type /Sig entry which is required for signature dictionaries
+                    // and /ByteRange which is required for signed PDFs.
+                    const hasSigType = content.includes('/Type /Sig') || content.includes('/Type/Sig');
+                    const hasByteRange = content.includes('/ByteRange');
+                    
+                    // A PDF is likely signed if it has both a Signature type object and a ByteRange
+                    const isSigned = hasSigType && hasByteRange;
                     resolve(isSigned);
                 };
-                reader.readAsText(file.slice(0, 100000)); // Read first 100KB
+                // Read a larger portion of the file to ensure we don't miss the signature object
+                // which is often near the end of the file in the incremental update section.
+                // We'll read the first 50KB and the last 50KB.
+                const fileSize = file.size;
+                const chunkSize = 50000;
+                if (fileSize <= chunkSize * 2) {
+                    reader.readAsText(file);
+                } else {
+                    const blob = new Blob([
+                        file.slice(0, chunkSize),
+                        file.slice(fileSize - chunkSize, fileSize)
+                    ]);
+                    reader.readAsText(blob);
+                }
             });
         }
 
