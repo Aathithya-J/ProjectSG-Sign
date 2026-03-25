@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign with Singpass</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="description" content="Sign documents securely with Singpass digital identity">
+    <meta name="theme-color" content="#F4333D">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https:; connect-src 'self' https://www.googleapis.com https://identitytoolkit.googleapis.com https://app.sign.singpass.gov.sg https://firebaseinstallations.googleapis.com https://firebaseremoteconfig.googleapis.com; frame-src 'self';">
+    <title>Sign with Singpass - Secure Document Signing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -15,12 +19,14 @@
         :root {
             --sp-red: #F4333D;
             --sp-red-hover: #B0262D;
+            --sp-red-light: #FEE2E4;
             --text-primary: #1a1a1a;
             --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
             --border-color: #e5e7eb;
-            --bg-page: #f3f4f6;
+            --bg-page: #f9fafb;
             --bg-card: #ffffff;
-            --bg-input: #f9fafb;
+            --bg-input: #f3f4f6;
             --success-bg: #f0fdf4;
             --success-text: #166534;
             --success-border: #bbf7d0;
@@ -30,22 +36,61 @@
             --info-bg: #eff6ff;
             --info-text: #1e40af;
             --info-border: #bfdbfe;
+            --warning-bg: #fffbeb;
+            --warning-text: #92400e;
+            --warning-border: #fcd34d;
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 16px;
-            --shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.08);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        html, body {
+            height: 100%;
         }
 
         body {
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg-page);
+            background: linear-gradient(135deg, var(--bg-page) 0%, #f0f1f3 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 24px 16px;
+            padding: 20px 16px;
             color: var(--text-primary);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Background decorative elements */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(244, 51, 61, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -20%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(244, 51, 61, 0.05) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
         }
 
         /* ── Auth UI ── */
@@ -55,27 +100,59 @@
             align-items: center;
             justify-content: center;
             text-align: center;
+            position: relative;
+            z-index: 1;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .login-card {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-card);
+            box-shadow: var(--shadow-lg);
             width: 100%;
-            max-width: 400px;
-            padding: 40px;
+            max-width: 420px;
+            padding: 48px 40px;
+            border: 1px solid rgba(0,0,0,0.05);
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .login-title {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 28px;
+            font-weight: 800;
             margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--sp-red) 0%, #c0222a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .login-subtitle {
             font-size: 14px;
             color: var(--text-secondary);
-            margin-bottom: 30px;
+            margin-bottom: 36px;
+            line-height: 1.6;
         }
 
         .google-btn {
@@ -84,19 +161,27 @@
             justify-content: center;
             gap: 12px;
             width: 100%;
-            padding: 12px;
+            padding: 12px 16px;
             background: white;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-md);
             font-family: inherit;
             font-size: 15px;
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: var(--transition);
+            color: var(--text-primary);
         }
 
         .google-btn:hover {
-            background: #f9fafb;
+            background: var(--bg-input);
+            border-color: var(--sp-red);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .google-btn:active {
+            transform: translateY(0);
         }
 
         .google-btn svg {
@@ -104,11 +189,37 @@
             height: 20px;
         }
 
+        #auth-error {
+            color: var(--error-text);
+            font-size: 13px;
+            margin-top: 16px;
+            display: none;
+            padding: 12px 14px;
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            border-radius: var(--radius-sm);
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* ── Main UI (Hidden by default) ── */
         #main-app {
             display: none;
             width: 100%;
-            max-width: 480px;
+            max-width: 540px;
+            position: relative;
+            z-index: 1;
+            animation: fadeIn 0.5s ease-out;
         }
 
         .user-welcome {
@@ -116,8 +227,12 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: 16px;
-            padding: 0 4px;
+            margin-bottom: 24px;
+            padding: 14px 16px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
         }
 
         .welcome-text {
@@ -128,7 +243,7 @@
 
         .welcome-text span {
             color: var(--text-primary);
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .logout-btn {
@@ -138,12 +253,13 @@
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 4px;
+            transition: var(--transition);
         }
 
         .logout-btn:hover {
-            background: var(--error-bg);
+            background: var(--sp-red-light);
         }
 
         /* ── Brand header ── */
@@ -156,85 +272,109 @@
         }
 
         .brand-logo {
-            height: 48px;
+            height: 52px;
             width: auto;
             object-fit: contain;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.08));
         }
 
         /* ── Card ── */
         .card {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-card);
+            box-shadow: var(--shadow-lg);
             width: 100%;
-            padding: 36px 32px 32px;
+            padding: 40px 36px;
+            border: 1px solid rgba(0,0,0,0.05);
+            animation: slideUp 0.6s ease-out 0.1s both;
         }
 
         .card-header {
-            margin-bottom: 28px;
+            margin-bottom: 32px;
         }
 
         .card-title {
-            font-size: 22px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 800;
             color: var(--text-primary);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
         .card-subtitle {
             font-size: 14px;
             color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .divider {
-            height: 1px;
-            background: var(--border-color);
-            margin: 24px 0;
+            line-height: 1.6;
         }
 
         /* ── Drop zone ── */
         .drop-zone {
             border: 2px dashed var(--sp-red);
             border-radius: var(--radius-md);
-            padding: 32px 24px;
+            padding: 40px 28px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
-            background: #fafafa;
+            transition: var(--transition);
+            background: linear-gradient(135deg, var(--sp-red-light) 0%, rgba(244, 51, 61, 0.03) 100%);
             position: relative;
+            overflow: hidden;
+        }
+
+        .drop-zone::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(244, 51, 61, 0.05) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .drop-zone:hover {
-            background: #f5f5f5;
+            background: linear-gradient(135deg, rgba(244, 51, 61, 0.08) 0%, rgba(244, 51, 61, 0.02) 100%);
             border-color: var(--sp-red-hover);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
         }
 
         .drop-zone.dragover {
-            background: #f0fdf4;
+            background: linear-gradient(135deg, var(--success-bg) 0%, rgba(22, 163, 74, 0.03) 100%);
             border-color: #16a34a;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
         }
 
         .drop-zone-icon {
-            font-size: 32px;
-            margin-bottom: 12px;
+            font-size: 40px;
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 1;
         }
 
         .drop-zone-icon svg {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
+            color: var(--sp-red);
+            transition: var(--transition);
+        }
+
+        .drop-zone:hover .drop-zone-icon svg {
+            transform: scale(1.1) rotate(5deg);
         }
 
         .drop-zone-title {
-            font-size: 15px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            position: relative;
+            z-index: 1;
         }
 
         .drop-zone-subtitle {
             font-size: 13px;
             color: var(--text-secondary);
+            position: relative;
+            z-index: 1;
         }
 
         #file-input {
@@ -244,15 +384,18 @@
         .file-badge {
             display: none;
             align-items: center;
-            gap: 6px;
-            margin-top: 12px;
-            padding: 8px 12px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
             border-radius: 6px;
             font-size: 13px;
-            color: #166534;
-            font-weight: 500;
+            color: var(--success-text);
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+            animation: slideDown 0.3s ease-out;
         }
 
         .file-badge.visible {
@@ -262,37 +405,48 @@
         .file-badge svg {
             width: 16px;
             height: 16px;
-            stroke: #16a34a;
+            stroke: var(--success-text);
         }
 
         /* ── Input group ── */
         .input-group {
-            margin-top: 24px;
+            margin-top: 28px;
         }
 
         .input-label {
             display: block;
             font-size: 13px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .optional {
             font-weight: 400;
             color: var(--text-secondary);
             font-size: 12px;
+            text-transform: none;
+            letter-spacing: normal;
         }
 
         .input-wrapper {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 0 12px;
+            gap: 12px;
+            padding: 0 14px;
             background: var(--bg-input);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            height: 40px;
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-md);
+            height: 44px;
+            transition: var(--transition);
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--sp-red);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(244, 51, 61, 0.1);
         }
 
         .input-wrapper svg {
@@ -300,6 +454,11 @@
             height: 18px;
             color: var(--text-secondary);
             flex-shrink: 0;
+            transition: var(--transition);
+        }
+
+        .input-wrapper:focus-within svg {
+            color: var(--sp-red);
         }
 
         .input-wrapper input {
@@ -313,12 +472,12 @@
         }
 
         .input-wrapper input::placeholder {
-            color: var(--text-secondary);
+            color: var(--text-tertiary);
         }
 
         /* ── Sign button wrapper ── */
         .singpass-btn-wrap {
-            margin-top: 24px;
+            margin-top: 32px;
             display: flex;
             justify-content: center;
         }
@@ -328,20 +487,22 @@
             border: none;
             padding: 0;
             cursor: pointer;
-            transition: opacity 0.2s, transform 0.1s;
+            transition: var(--transition);
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
         }
 
         .singpass-button:hover:not(:disabled) {
-            opacity: 0.9;
-            transform: scale(1.02);
+            opacity: 0.95;
+            transform: translateY(-3px);
+            filter: drop-shadow(0 6px 12px rgba(0,0,0,0.12));
         }
 
         .singpass-button:active:not(:disabled) {
-            transform: scale(0.98);
+            transform: translateY(-1px);
         }
 
         .singpass-button:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
         }
 
@@ -353,13 +514,14 @@
 
         /* ── Status messages ── */
         #status {
-            margin-top: 20px;
-            padding: 13px 15px;
-            border-radius: var(--radius-sm);
+            margin-top: 24px;
+            padding: 14px 16px;
+            border-radius: var(--radius-md);
             display: none;
             font-size: 13px;
             line-height: 1.6;
             border: 1px solid;
+            animation: slideDown 0.3s ease-out;
         }
 
         #status.info {
@@ -380,47 +542,104 @@
             border-color: var(--success-border);
         }
 
-        .status-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        #status.warning {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border-color: var(--warning-border);
         }
 
-        .error-detail {
-            font-size: 11.5px;
-            font-family: 'Courier New', Courier, monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 8px;
-            background: rgba(0,0,0,0.05);
-            padding: 8px;
-            border-radius: 4px;
-        }
-
+        /* ── Download button ── */
         #download-btn {
             display: none;
             width: 100%;
-            margin-top: 20px;
-            padding: 12px;
-            background: #16a34a;
+            padding: 12px 16px;
+            margin-top: 16px;
+            background: linear-gradient(135deg, var(--sp-red) 0%, var(--sp-red-hover) 100%);
             color: white;
             border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 700;
             cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(244, 51, 61, 0.3);
         }
 
+        #download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(244, 51, 61, 0.4);
+        }
+
+        #download-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ── Card footer ── */
         .card-footer {
-            margin-top: 32px;
-            text-align: center;
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
         }
 
         .card-footer p {
             font-size: 12px;
-            color: var(--text-secondary);
+            color: var(--text-tertiary);
             line-height: 1.6;
+            text-align: center;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 520px) {
+            body {
+                padding: 16px 12px;
+            }
+
+            .login-card {
+                max-width: 100%;
+                padding: 36px 28px;
+            }
+
+            .card {
+                max-width: 100%;
+                padding: 28px 20px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+
+            .card-title {
+                font-size: 22px;
+            }
+
+            .drop-zone {
+                padding: 32px 20px;
+            }
+
+            .singpass-button svg {
+                width: 160px;
+                height: 40px;
+            }
+
+            .brand-logo {
+                height: 44px;
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(244, 51, 61, 0.2);
+            border-top-color: var(--sp-red);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -433,7 +652,7 @@
         </div>
         <div class="login-card">
             <h1 class="login-title">Welcome back</h1>
-            <p class="login-subtitle">Please sign in to access the portal</p>
+            <p class="login-subtitle">Sign in to access the secure document signing portal</p>
             <button id="google-login-btn" class="google-btn">
                 <svg viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -443,7 +662,7 @@
                 </svg>
                 Sign in with Google
             </button>
-            <div id="auth-error" style="color: var(--error-text); font-size: 13px; margin-top: 16px; display: none;"></div>
+            <div id="auth-error"></div>
         </div>
     </div>
 
@@ -466,7 +685,7 @@
 
             <div class="drop-zone" id="drop-zone">
                 <div class="drop-zone-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--sp-red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
                 <div class="drop-zone-title">Drag & drop your PDF here</div>
                 <div class="drop-zone-subtitle">or click to browse files</div>
@@ -482,7 +701,7 @@
                 <label class="input-label">Signer NRIC <span class="optional">(optional)</span></label>
                 <div class="input-wrapper">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <input type="text" id="signer-nric" placeholder="e.g. S1234567A" maxlength="9">
+                    <input type="text" id="signer-nric" placeholder="e.g. S1234567A" maxlength="9" autocomplete="off">
                 </div>
             </div>
 
@@ -597,6 +816,8 @@
             dropZone.classList.remove('dragover');
             if (e.dataTransfer.files.length > 0 && e.dataTransfer.files[0].type === 'application/pdf') {
                 handleFileSelect(e.dataTransfer.files[0]);
+            } else {
+                showStatus('error', 'Please upload a valid PDF file.');
             }
         };
 
@@ -605,6 +826,13 @@
         };
 
         function handleFileSelect(file) {
+            // Security: Validate file size (max 50MB)
+            const maxSize = 50 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showStatus('error', 'File size exceeds 50MB limit.');
+                return;
+            }
+
             selectedFile = file;
             fileNameText.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' kB)';
             fileBadge.classList.add('visible');
@@ -618,17 +846,35 @@
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-            if (nricInput.value.trim()) formData.append('signer_nric', nricInput.value.trim());
+            if (nricInput.value.trim()) {
+                // Security: Validate NRIC format
+                const nric = nricInput.value.trim().toUpperCase();
+                if (!/^[STFG]\d{7}[A-Z]$/.test(nric)) {
+                    showStatus('error', 'Invalid NRIC format. Expected: S1234567A');
+                    signBtn.disabled = false;
+                    return;
+                }
+                formData.append('signer_nric', nric);
+            }
 
             try {
-                const response = await fetch('/api/send', { method: 'POST', body: formData });
+                const response = await fetch('/api/send', { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
                 const result = await response.json();
 
                 if (response.ok) {
                     localStorage.setItem('last_exchange_code', result.exchange_code);
-                    localStorage.setItem('last_request_id',   result.sign_request_id);
+                    localStorage.setItem('last_request_id', result.sign_request_id);
                     localStorage.setItem('last_filename', selectedFile.name);
-                    window.location.href = result.signing_url;
+                    showStatus('success', 'Redirecting to Singpass…');
+                    setTimeout(() => {
+                        window.location.href = result.signing_url;
+                    }, 500);
                 } else {
                     signBtn.disabled = false;
                     showStatus('error', 'Error: ' + (result.error || 'Request failed'));
