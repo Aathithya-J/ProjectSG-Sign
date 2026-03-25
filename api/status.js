@@ -98,8 +98,14 @@ bQotHZrdaiEpoWTtcaE/jxqjhU8t0pY6Yy7PFGY7l0jCFTOwtIj6pC50
             res.status(200).json({ status: "signed", signed_doc_url: result.signed_doc_url });
           } else if (apiRes.statusCode === 400 && result.error === "DOCUMENT_NOT_SIGNED") {
             res.status(200).json({ status: "pending" });
+          } else if (apiRes.statusCode === 400 && result.error === "REQUEST_EXPIRED") {
+            res.status(200).json({ status: "expired", error: "Signing request has expired" });
+          } else if (apiRes.statusCode === 400 && result.error === "REQUEST_CANCELLED") {
+            res.status(200).json({ status: "cancelled", error: "Signing request was cancelled" });
+          } else if (apiRes.statusCode === 400 && result.error === "REQUEST_FAILED") {
+            res.status(200).json({ status: "failed", error: "Signing request failed" });
           } else {
-            res.status(apiRes.statusCode).json(result);
+            res.status(200).json({ status: "failed", error: result.error || "Unknown error", details: result });
           }
         } else {
           res

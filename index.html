@@ -98,77 +98,61 @@
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 6px;
-            letter-spacing: -0.4px;
         }
 
         .card-subtitle {
-            font-size: 13.5px;
+            font-size: 14px;
             color: var(--text-secondary);
             line-height: 1.5;
         }
 
-        /* ── Divider ── */
         .divider {
             height: 1px;
             background: var(--border-color);
-            margin: 0 -32px 28px;
+            margin: 24px 0;
         }
 
         /* ── Drop zone ── */
         .drop-zone {
-            border: 2px dashed var(--border-color);
+            border: 2px dashed var(--sp-red);
             border-radius: var(--radius-md);
-            padding: 28px 20px;
+            padding: 32px 24px;
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.2s, background 0.2s;
-            background: var(--bg-input);
-            margin-bottom: 20px;
+            transition: all 0.2s;
+            background: #fafafa;
             position: relative;
         }
 
         .drop-zone:hover {
-            border-color: var(--sp-red);
-            background: #fff5f5;
+            background: #f5f5f5;
+            border-color: var(--sp-red-hover);
         }
 
-        .drop-zone.hover {
-            border-color: var(--sp-red);
-            background: #fff0f0;
-        }
-
-        .drop-zone.has-file {
-            border-color: #10b981;
+        .drop-zone.dragover {
             background: #f0fdf4;
-            border-style: solid;
+            border-color: #16a34a;
         }
 
         .drop-zone-icon {
-            width: 44px;
-            height: 44px;
-            margin: 0 auto 12px;
-            background: white;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            font-size: 32px;
+            margin-bottom: 12px;
         }
 
         .drop-zone-icon svg {
-            width: 22px;
-            height: 22px;
+            width: 32px;
+            height: 32px;
         }
 
         .drop-zone-title {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
 
         .drop-zone-subtitle {
-            font-size: 12.5px;
+            font-size: 13px;
             color: var(--text-secondary);
         }
 
@@ -179,124 +163,111 @@
         .file-badge {
             display: none;
             align-items: center;
-            gap: 8px;
-            background: white;
-            border: 1px solid #10b981;
-            border-radius: 6px;
-            padding: 6px 10px;
+            gap: 6px;
             margin-top: 12px;
-            font-size: 12px;
+            padding: 8px 12px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #166534;
             font-weight: 500;
-            color: #065f46;
         }
 
         .file-badge.visible {
-            display: inline-flex;
+            display: flex;
         }
 
         .file-badge svg {
-            width: 14px;
-            height: 14px;
-            flex-shrink: 0;
-            color: #10b981;
+            width: 16px;
+            height: 16px;
+            stroke: #16a34a;
         }
 
-        /* ── Input ── */
+        /* ── Input group ── */
         .input-group {
-            margin-bottom: 24px;
+            margin-top: 24px;
         }
 
         .input-label {
             display: block;
-            font-size: 12.5px;
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 7px;
-            letter-spacing: 0.1px;
-        }
-
-        .input-label .optional {
-            font-weight: 400;
-            color: var(--text-secondary);
-            font-size: 11.5px;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        .input-wrapper svg {
-            position: absolute;
-            left: 11px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 15px;
-            height: 15px;
-            color: #9ca3af;
-            pointer-events: none;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            padding: 10px 12px 10px 34px;
-            border: 1.5px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            font-family: inherit;
-            font-size: 13.5px;
-            background: var(--bg-input);
-            color: var(--text-primary);
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--sp-red);
-            background: white;
-            box-shadow: 0 0 0 3px rgba(244, 51, 61, 0.08);
-        }
-
-        input[type="text"]::placeholder {
-            color: #c1c7d0;
-        }
-
-        /* ── Sign with Singpass button (official SVG) ── */
-        .singpass-btn-wrap {
             margin-bottom: 8px;
         }
 
+        .optional {
+            font-weight: 400;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            height: 40px;
+        }
+
+        .input-wrapper svg {
+            width: 18px;
+            height: 18px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .input-wrapper input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* ── Sign button wrapper ── */
+        .singpass-btn-wrap {
+            margin-top: 24px;
+            display: flex;
+            justify-content: center;
+        }
+
         .singpass-button {
-            display: block;
-            width: 100%;
-            height: auto;
             background: none;
             border: none;
-            cursor: pointer;
-            transition: opacity 0.15s, transform 0.15s;
             padding: 0;
-            font-family: inherit;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
         }
 
-        .singpass-button:hover:not(:disabled) svg {
+        .singpass-button:hover:not(:disabled) {
             opacity: 0.9;
-            transform: translateY(-1px);
+            transform: scale(1.02);
         }
 
-        .singpass-button:active:not(:disabled) svg {
-            transform: translateY(0);
+        .singpass-button:active:not(:disabled) {
+            transform: scale(0.98);
         }
 
         .singpass-button:disabled {
-            opacity: 0.45;
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
         .singpass-button svg {
-            width: 100%;
-            height: auto;
-            max-width: 280px;
+            width: 191px;
+            height: 48px;
             display: block;
-            margin: 0 auto;
-            transition: opacity 0.15s, transform 0.15s;
         }
 
         /* ── Status messages ── */
@@ -448,37 +419,33 @@
             margin-top: 20px;
             padding-top: 16px;
             border-top: 1px solid var(--border-color);
-            text-align: center;
-        }
-
-        .card-footer p {
-            font-size: 11.5px;
+            font-size: 12px;
             color: var(--text-secondary);
-            line-height: 1.5;
-        }
-
-        .card-footer a {
-            color: var(--sp-red);
-            text-decoration: none;
-            font-weight: 500;
+            line-height: 1.6;
         }
 
         /* ── Responsive ── */
-        @media (max-width: 520px) {
+        @media (max-width: 600px) {
             .card {
                 padding: 28px 20px 24px;
-            }
-
-            .divider {
-                margin: 0 -20px 24px;
             }
 
             .card-title {
                 font-size: 20px;
             }
 
+            .drop-zone {
+                padding: 24px 16px;
+            }
+
+            .singpass-btn-wrap {
+                margin-top: 20px;
+            }
+
             .singpass-button svg {
-                max-width: 240px;
+                width: 100%;
+                height: auto;
+                max-width: 191px;
             }
         }
     </style>
@@ -585,67 +552,54 @@
         const fileInput     = document.getElementById('file-input');
         const fileBadge     = document.getElementById('file-badge');
         const fileNameText  = document.getElementById('file-name-text');
-        const signBtn       = document.getElementById('sign-btn');
         const nricInput     = document.getElementById('signer-nric');
+        const signBtn       = document.getElementById('sign-btn');
         const statusDiv     = document.getElementById('status');
-        const downloadBtn   = document.getElementById('download-btn');
         const linkSection   = document.getElementById('link-section');
         const linkBox       = document.getElementById('link-box');
         const openLinkBtn   = document.getElementById('open-link-btn');
         const copyLinkBtn   = document.getElementById('copy-link-btn');
+        const downloadBtn   = document.getElementById('download-btn');
 
         let selectedFile = null;
         let signingUrl = null;
 
-        // ── Resume session on page load ──────────────────────────────────────
-        window.onload = () => {
-            const urlParams    = new URLSearchParams(window.location.search);
-            const requestId    = urlParams.get('request_id') || localStorage.getItem('last_request_id');
-            const exchangeCode = urlParams.get('exchange_code') || localStorage.getItem('last_exchange_code');
-
-            if (requestId && exchangeCode) {
-                showStatus('info', 'Resuming session, checking status…');
-                pollStatus(requestId, exchangeCode);
-            }
-        };
-
-        // ── File selection ───────────────────────────────────────────────────
-        dropZone.onclick = () => fileInput.click();
-        dropZone.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); };
-
-        fileInput.onchange = (e) => {
-            if (e.target.files.length > 0) handleFile(e.target.files[0]);
-        };
-
-        dropZone.ondragover  = (e) => { e.preventDefault(); dropZone.classList.add('hover'); };
-        dropZone.ondragleave = ()  => dropZone.classList.remove('hover');
-        dropZone.ondrop      = (e) => {
+        // ── File upload handlers ─────────────────────────────────────────────
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            dropZone.classList.remove('hover');
-            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
-        };
-
-        function handleFile(file) {
-            if (file.type !== 'application/pdf') {
-                alert('Please upload a PDF file.');
-                return;
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type === 'application/pdf') {
+                handleFileSelect(files[0]);
             }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
             selectedFile = file;
             localStorage.setItem('last_filename', file.name);
-
-            fileNameText.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+            fileNameText.textContent = file.name + ' (' + (file.size / 1024).toFixed(1) + ' kB)';
             fileBadge.classList.add('visible');
-            dropZone.classList.add('has-file');
-
             signBtn.disabled = false;
             statusDiv.style.display = 'none';
-            downloadBtn.style.display = 'none';
-            linkSection.classList.remove('visible');
         }
 
-        // ── Sign button click ────────────────────────────────────────────────
+        // ── Sign button handler ──────────────────────────────────────────────
         signBtn.onclick = async () => {
-            if (signBtn.disabled || !selectedFile) return;
+            if (!selectedFile) return;
 
             signBtn.disabled = true;
             showStatus('info', 'Initiating signing session…');
@@ -714,7 +668,22 @@
 
         // ── Poll for signing completion ──────────────────────────────────────
         async function pollStatus(id, exchangeCode) {
-            const interval = setInterval(async () => {
+            const MAX_POLL_DURATION = 30 * 60 * 1000; // 30 minutes max
+            const INITIAL_POLL_INTERVAL = 3000; // 3 seconds initial
+            const MAX_POLL_INTERVAL = 10000; // 10 seconds max interval
+            
+            let pollCount = 0;
+            let pollStartTime = Date.now();
+            
+            async function doPoll() {
+                const elapsedTime = Date.now() - pollStartTime;
+                
+                // Stop polling if max duration exceeded
+                if (elapsedTime > MAX_POLL_DURATION) {
+                    console.warn('Polling timeout: max duration exceeded');
+                    return; // Silent timeout — user is already on Singpass portal
+                }
+                
                 try {
                     const response = await fetch(`/api/status?id=${id}&exchange_code=${exchangeCode}`);
 
@@ -727,45 +696,29 @@
                     }
 
                     if (result.status === 'signed') {
-                        clearInterval(interval);
-                        showStatus('success', 'Document signed successfully! The signed PDF has been emailed to info@project.sg.');
-                        downloadBtn.style.display = 'block';
-                        linkSection.classList.remove('visible');
+                        // Document signed successfully
                         localStorage.removeItem('last_exchange_code');
                         localStorage.removeItem('last_request_id');
-
-                        downloadBtn.onclick = async () => {
-                            downloadBtn.disabled = true;
-                            downloadBtn.textContent = 'Downloading…';
-                            try {
-                                const dlRes = await fetch(`/api/download?id=${id}&exchange_code=${exchangeCode}`);
-                                if (!dlRes.ok) throw new Error(`HTTP ${dlRes.status}`);
-                                const blob = await dlRes.blob();
-                                const url  = window.URL.createObjectURL(blob);
-                                const a    = document.createElement('a');
-                                a.href     = url;
-                                const orig = localStorage.getItem('last_filename') || 'document.pdf';
-                                a.download = orig.replace(/\.pdf$/i, '_signed.pdf');
-                                document.body.appendChild(a);
-                                a.click();
-                                window.URL.revokeObjectURL(url);
-                                document.body.removeChild(a);
-                            } catch (err) {
-                                alert('Download failed: ' + err.message);
-                            } finally {
-                                downloadBtn.disabled  = false;
-                                downloadBtn.textContent = '⬇ Download Signed PDF';
-                            }
-                        };
-                    } else if (result.status === 'expired' || result.status === 'failed') {
-                        clearInterval(interval);
-                        showStatus('error', `Signing session ${result.status}. Please try again.`);
-                        signBtn.disabled = false;
+                    } else if (result.status === 'expired' || result.status === 'failed' || result.status === 'cancelled') {
+                        // Terminal state reached — stop polling
+                        console.log(`Polling stopped: ${result.status}`);
+                    } else if (result.status === 'pending') {
+                        // Continue polling with exponential backoff
+                        pollCount++;
+                        const nextInterval = Math.min(INITIAL_POLL_INTERVAL * (1 + pollCount * 0.2), MAX_POLL_INTERVAL);
+                        setTimeout(doPoll, nextInterval);
                     }
                 } catch (err) {
                     console.error('Polling error:', err);
+                    // Retry on error with exponential backoff
+                    pollCount++;
+                    const nextInterval = Math.min(INITIAL_POLL_INTERVAL * (1 + pollCount * 0.2), MAX_POLL_INTERVAL);
+                    setTimeout(doPoll, nextInterval);
                 }
-            }, 3000);
+            }
+            
+            // Start polling after initial delay
+            setTimeout(doPoll, INITIAL_POLL_INTERVAL);
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────
