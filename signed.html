@@ -231,6 +231,10 @@
         const urlParams    = new URLSearchParams(window.location.search);
         const requestId    = urlParams.get('request_id') || urlParams.get('sign_request_id') || localStorage.getItem('last_request_id');
         const exchangeCode = urlParams.get('exchange_code') || localStorage.getItem('last_exchange_code');
+        
+        // Log for debugging (only in console)
+        console.log('Request ID:', requestId);
+        console.log('Exchange Code:', exchangeCode ? 'Present' : 'Missing');
 
         const loaderWrap  = document.getElementById('loader-wrap');
         const stateIcon   = document.getElementById('state-icon');

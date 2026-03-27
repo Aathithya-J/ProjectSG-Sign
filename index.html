@@ -704,11 +704,17 @@
                     // Show shareable link instead of redirecting
                     // The signing_url from Singpass already points to our /signed page with request_id
                     // We append the exchange_code so it's available on any browser
-                    const shareableUrl = new URL(result.signing_url);
+                    const shareableUrl = new URL(result.signing_url, window.location.origin);
                     shareableUrl.searchParams.set('exchange_code', result.exchange_code);
                     
-                    shareLinkInput.value = shareableUrl.toString();
-                    directSignLink.href = shareableUrl.toString();
+                    // Also ensure we have the request_id in the URL if it's not there
+                    if (!shareableUrl.searchParams.has('request_id') && result.sign_request_id) {
+                        shareableUrl.searchParams.set('request_id', result.sign_request_id);
+                    }
+                    
+                    const finalUrl = shareableUrl.toString();
+                    shareLinkInput.value = finalUrl;
+                    directSignLink.href = finalUrl;
                     linkShareContainer.style.display = 'block';
                     showStatus('success', 'Signing session created!');
                 } else {
